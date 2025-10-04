@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anecdotes Locales</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Découvrez des anecdotes locales</h1>
+
+        <div class="input-group">
+            <label for="address">Entrez une adresse :</label>
+            <input
+                type="text"
+                id="address"
+                placeholder="Ex: 10 rue de Rivoli, Paris"
+                autocomplete="off"
+            >
+        </div>
+
+        <div class="categories">
+            <h3>Choisissez une catégorie :</h3>
+            <div class="category-buttons">
+                <button class="category-btn" data-category="aléatoire">Aléatoire</button>
+                <button class="category-btn" data-category="historique">Historique</button>
+                <button class="category-btn" data-category="géographique">Géographique</button>
+                <button class="category-btn" data-category="social">Social</button>
+            </div>
+        </div>
+
+        <button id="generate-btn" class="generate-btn">Générer une anecdote</button>
+
+        <div id="result" class="result hidden">
+            <h3>Anecdote :</h3>
+            <p id="anecdote-text"></p>
+        </div>
+
+        <div id="error" class="error hidden"></div>
+        <div id="loading" class="loading hidden">Chargement...</div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
