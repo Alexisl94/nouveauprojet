@@ -3,43 +3,120 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Anecdotes Locales</title>
+    <title>Gestion États des Lieux</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="container">
-        <h1>Découvrez des anecdotes locales</h1>
+    <!-- Section Authentification -->
+    <div id="auth-section" class="section">
+        <div class="container-auth">
+            <h1>Gestion d'États des Lieux</h1>
 
-        <div class="input-group">
-            <label for="address">Entrez une adresse :</label>
-            <input
-                type="text"
-                id="address"
-                placeholder="Ex: 10 rue de Rivoli, Paris"
-                autocomplete="off"
-            >
-        </div>
+            <div class="auth-forms">
+                <div class="form-container">
+                    <h2>Connexion</h2>
+                    <form id="login-form">
+                        <input type="email" id="login-email" placeholder="Email" required>
+                        <input type="password" id="login-password" placeholder="Mot de passe" required>
+                        <button type="submit">Se connecter</button>
+                    </form>
+                </div>
 
-        <div class="categories">
-            <h3>Choisissez une catégorie :</h3>
-            <div class="category-buttons">
-                <button class="category-btn" data-category="aléatoire">Aléatoire</button>
-                <button class="category-btn" data-category="historique">Historique</button>
-                <button class="category-btn" data-category="géographique">Géographique</button>
-                <button class="category-btn" data-category="social">Social</button>
+                <div class="form-container">
+                    <h2>Inscription</h2>
+                    <form id="register-form">
+                        <input type="text" id="register-nom" placeholder="Nom" required>
+                        <input type="email" id="register-email" placeholder="Email" required>
+                        <input type="password" id="register-password" placeholder="Mot de passe" required>
+                        <button type="submit">S'inscrire</button>
+                    </form>
+                </div>
             </div>
         </div>
+    </div>
 
-        <button id="generate-btn" class="generate-btn">Générer une anecdote</button>
+    <!-- Section Liste des Biens -->
+    <div id="biens-section" class="section hidden">
+        <nav class="navbar">
+            <h1>Mes Biens Immobiliers</h1>
+            <div>
+                <span id="user-name"></span>
+                <button id="logout-btn" class="btn-secondary">Déconnexion</button>
+            </div>
+        </nav>
 
-        <div id="result" class="result hidden">
-            <h3>Anecdote :</h3>
-            <p id="anecdote-text"></p>
+        <div class="container">
+            <div class="section-header">
+                <h2>Mes Biens</h2>
+                <button id="add-bien-btn" class="btn-primary">+ Ajouter un bien</button>
+            </div>
+
+            <div id="biens-list" class="items-grid"></div>
         </div>
 
-        <div id="error" class="error hidden"></div>
-        <div id="loading" class="loading hidden">Chargement...</div>
+        <!-- Modal pour ajouter un bien -->
+        <div id="bien-modal" class="modal hidden">
+            <div class="modal-content">
+                <h3>Nouveau Bien Immobilier</h3>
+                <input type="text" id="bien-nom" placeholder="Nom du bien (ex: Appartement Paris 15)">
+                <input type="text" id="bien-adresse" placeholder="Adresse complète">
+                <div class="modal-actions">
+                    <button id="save-bien-btn" class="btn-primary">Créer</button>
+                    <button class="close-modal btn-secondary">Annuler</button>
+                </div>
+            </div>
+        </div>
     </div>
+
+    <!-- Section Détails du Bien -->
+    <div id="bien-detail-section" class="section hidden">
+        <nav class="navbar">
+            <button id="back-btn" class="btn-secondary">← Retour</button>
+            <h1 id="bien-name"></h1>
+            <button id="generate-pdf-btn" class="btn-success">📄 Générer PDF</button>
+        </nav>
+
+        <div class="container">
+            <div class="bien-info">
+                <p><strong>Adresse:</strong> <span id="bien-adresse-display"></span></p>
+            </div>
+
+            <!-- Ajout d'objets -->
+            <div class="add-objet-section">
+                <h3>Ajouter un élément au bien</h3>
+                <div class="add-objet-form">
+                    <input type="text" id="objet-nom" placeholder="Nom de l'élément (ex: Murs salon, Sol cuisine...)">
+                    <input type="text" id="objet-description" placeholder="Description (optionnel)">
+                    <button id="add-objet-btn" class="btn-primary">+ Ajouter</button>
+                </div>
+            </div>
+
+            <!-- Tableau de l'état des lieux -->
+            <div class="etat-lieux-section">
+                <h3>État des Lieux</h3>
+                <div id="etat-table-container">
+                    <table id="etat-table" class="etat-table">
+                        <thead>
+                            <tr>
+                                <th>Élément</th>
+                                <th>Entrée</th>
+                                <th>Sortie</th>
+                                <th>Note (1-5)</th>
+                                <th>Commentaires</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="etat-table-body">
+                        </tbody>
+                    </table>
+                    <p id="empty-table-message" class="empty-state hidden">Aucun élément. Ajoutez des éléments pour créer l'état des lieux.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="message" class="message hidden"></div>
+    <div id="loading" class="loading hidden">Chargement...</div>
 
     <script src="app.js"></script>
 </body>

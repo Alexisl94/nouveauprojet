@@ -1,0 +1,101 @@
+{
+  "proprietaires": [
+    {
+      "id": "1759767887409",
+      "email": "alexis.leray.fr@gmail.com",
+      "nom": "Alexis",
+      "motDePasse": "Test",
+      "creeLe": "2025-10-06T16:24:47.409Z"
+    },
+    {
+      "id": "1759768375822",
+      "email": "alexis@test.com",
+      "nom": "Alexis",
+      "motDePasse": "Test",
+      "creeLe": "2025-10-06T16:32:55.822Z"
+    }
+  ],
+  "biens": [
+    {
+      "id": "1759767892824",
+      "proprietaireId": "1759767887409",
+      "nom": "Test",
+      "adresse": "",
+      "creeLe": "2025-10-06T16:24:52.824Z",
+      "objets": [
+        {
+          "id": "1759767902023",
+          "nom": "meuble",
+          "description": "",
+          "entree": false,
+          "sortie": false,
+          "note": 0,
+          "commentaires": ""
+        },
+        {
+          "id": "1759767906556",
+          "nom": "sol",
+          "description": "",
+          "entree": false,
+          "sortie": false,
+          "note": 0,
+          "commentaires": ""
+        }
+      ]
+    },
+    {
+      "id": "1759768383497",
+      "proprietaireId": "1759768375822",
+      "nom": "33 rue Simart",
+      "adresse": "",
+      "creeLe": "2025-10-06T16:33:03.497Z",
+      "objets": [
+        {
+          "id": "1759768390582",
+          "nom": "mur",
+          "description": "",
+          "entree": true,
+          "sortie": false,
+          "note": 0,
+          "commentaires": ""
+        }
+      ]
+    },
+    {
+      "id": "1759768455433",
+      "proprietaireId": "1759768375822",
+      "nom": "chambre 1",
+      "adresse": "rue marcel deplantay",
+      "creeLe": "2025-10-06T16:34:15.433Z",
+      "objets": [
+        {
+          "id": "1759768459970",
+          "nom": "mur",
+          "description": "",
+          "entree": true,
+          "sortie": false,
+          "note": 1,
+          "commentaires": "un peu sale"
+        },
+        {
+          "id": "1759768462339",
+          "nom": "sol",
+          "description": "",
+          "entree": false,
+          "sortie": false,
+          "note": 0,
+          "commentaires": ""
+        },
+        {
+          "id": "1759768464603",
+          "nom": "lampe",
+          "description": "",
+          "entree": false,
+          "sortie": false,
+          "note": 0,
+          "commentaires": ""
+        }
+      ]
+    }
+  ]
+}

@@ -1,19 +1,19 @@
 {
-  "name": "anecdotes-locales",
+  "name": "gestion-etats-lieux",
   "version": "1.0.0",
-  "description": "Application simple pour découvrir des anecdotes locales",
+  "description": "Application de gestion d'états des lieux pour propriétaires bailleurs",
   "main": "server.js",
   "type": "module",
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js"
   },
-  "keywords": ["anecdotes", "local", "vanilla-js"],
+  "keywords": ["etat-des-lieux", "location", "bailleur", "immobilier"],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.32.1",
     "dotenv": "^16.4.7",
-    "express": "^4.18.2"
+    "express": "^4.18.2",
+    "pdfkit": "^0.15.0"
   }
 }
