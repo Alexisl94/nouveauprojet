@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestion États des Lieux</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -66,6 +67,19 @@
                 </div>
             </div>
         </div>
+
+        <!-- Modal pour modifier un bien -->
+        <div id="edit-bien-modal" class="modal hidden">
+            <div class="modal-content">
+                <h3>Modifier le Bien</h3>
+                <input type="text" id="edit-bien-nom" placeholder="Nom du bien">
+                <input type="text" id="edit-bien-adresse" placeholder="Adresse complète">
+                <div class="modal-actions">
+                    <button id="update-bien-btn" class="btn-primary">Enregistrer</button>
+                    <button class="close-modal btn-secondary">Annuler</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Section Détails du Bien -->
@@ -73,7 +87,11 @@
         <nav class="navbar">
             <button id="back-btn" class="btn-secondary">← Retour</button>
             <h1 id="bien-name"></h1>
-            <button id="generate-pdf-btn" class="btn-success">📄 Générer PDF</button>
+            <div>
+                <button id="view-etats-btn" class="btn-secondary">📋 États réalisés</button>
+                <button id="demarrer-etat-btn" class="btn-success">🚀 Démarrer un état des lieux</button>
+                <button id="generate-pdf-btn" class="btn-secondary">📄 PDF</button>
+            </div>
         </nav>
 
         <div class="container">
@@ -81,36 +99,114 @@
                 <p><strong>Adresse:</strong> <span id="bien-adresse-display"></span></p>
             </div>
 
-            <!-- Ajout d'objets -->
+            <!-- Ajout d'objets et sections -->
             <div class="add-objet-section">
-                <h3>Ajouter un élément au bien</h3>
-                <div class="add-objet-form">
-                    <input type="text" id="objet-nom" placeholder="Nom de l'élément (ex: Murs salon, Sol cuisine...)">
+                <h3>Ajouter des éléments</h3>
+                <div class="add-buttons">
+                    <button id="add-section-btn" class="btn-secondary">+ Ajouter une section</button>
+                    <button id="add-objet-btn" class="btn-primary">+ Ajouter un élément</button>
+                </div>
+            </div>
+
+            <!-- Modal pour ajouter une section -->
+            <div id="section-modal" class="modal hidden">
+                <div class="modal-content">
+                    <h3>Nouvelle Section</h3>
+                    <input type="text" id="section-nom" placeholder="Nom de la section (ex: Salle de bain, Salon...)">
+                    <div class="modal-actions">
+                        <button id="save-section-btn" class="btn-primary">Créer</button>
+                        <button class="close-modal btn-secondary">Annuler</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal pour ajouter un objet -->
+            <div id="objet-modal" class="modal hidden">
+                <div class="modal-content">
+                    <h3>Nouvel Élément</h3>
+                    <input type="text" id="objet-nom" placeholder="Nom de l'élément">
                     <input type="text" id="objet-description" placeholder="Description (optionnel)">
-                    <button id="add-objet-btn" class="btn-primary">+ Ajouter</button>
+                    <select id="objet-section">
+                        <option value="">Sans section</option>
+                    </select>
+                    <div class="modal-actions">
+                        <button id="save-objet-btn" class="btn-primary">Créer</button>
+                        <button class="close-modal btn-secondary">Annuler</button>
+                    </div>
                 </div>
             </div>
 
             <!-- Tableau de l'état des lieux -->
             <div class="etat-lieux-section">
                 <h3>État des Lieux</h3>
-                <div id="etat-table-container">
-                    <table id="etat-table" class="etat-table">
-                        <thead>
-                            <tr>
-                                <th>Élément</th>
-                                <th>Entrée</th>
-                                <th>Sortie</th>
-                                <th>Note (1-5)</th>
-                                <th>Commentaires</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="etat-table-body">
-                        </tbody>
-                    </table>
-                    <p id="empty-table-message" class="empty-state hidden">Aucun élément. Ajoutez des éléments pour créer l'état des lieux.</p>
+                <div id="etat-container">
+                    <p id="empty-message" class="empty-state hidden">Aucun élément. Ajoutez des sections et des éléments pour créer l'état des lieux.</p>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section Liste des États des Lieux -->
+    <div id="etats-list-section" class="section hidden">
+        <nav class="navbar">
+            <button id="back-from-etats-btn" class="btn-secondary">← Retour au bien</button>
+            <h1>États des Lieux Réalisés</h1>
+            <button id="demarrer-etat-from-list-btn" class="btn-success">🚀 Démarrer un état des lieux</button>
+        </nav>
+
+        <div class="container">
+            <div id="etats-list" class="items-grid"></div>
+        </div>
+    </div>
+
+    <!-- Section Consultation/Modification d'un État des Lieux -->
+    <div id="etat-detail-section" class="section hidden">
+        <nav class="navbar">
+            <button id="back-from-etat-btn" class="btn-secondary">← Retour</button>
+            <h1 id="etat-title"></h1>
+            <button id="generate-etat-pdf-btn" class="btn-success">📄 Générer PDF</button>
+        </nav>
+
+        <div class="container">
+            <div class="etat-info">
+                <p><strong>Type:</strong> <span id="etat-type-display"></span></p>
+                <p><strong>Locataire:</strong> <span id="etat-locataire-display"></span></p>
+                <p><strong>Date:</strong> <span id="etat-date-display"></span></p>
+            </div>
+
+            <!-- Tableau de l'état des lieux -->
+            <div class="etat-lieux-section">
+                <h3>État des Lieux</h3>
+                <div id="etat-detail-container">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal pour démarrer un état des lieux -->
+    <div id="demarrer-etat-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Démarrer un nouvel état des lieux</h3>
+            <label>
+                Type d'état des lieux:
+                <select id="etat-type">
+                    <option value="entree">État d'entrée (vierge)</option>
+                    <option value="sortie">État de sortie</option>
+                </select>
+            </label>
+            <div id="etat-entree-selector" class="hidden">
+                <label>
+                    Sélectionner l'état d'entrée:
+                    <select id="etat-entree-id"></select>
+                </label>
+            </div>
+            <label>
+                Nom du locataire (optionnel):
+                <input type="text" id="etat-locataire" placeholder="Nom du locataire">
+            </label>
+            <div class="modal-actions">
+                <button id="start-etat-btn" class="btn-primary">Démarrer</button>
+                <button class="close-modal btn-secondary">Annuler</button>
             </div>
         </div>
     </div>

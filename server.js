@@ -25,9 +25,20 @@ import {
     obtenirBiens,
     obtenirBien,
     supprimerBien,
+    modifierBien,
+    dupliquerBien,
     ajouterObjet,
     supprimerObjet,
-    mettreAJourObjet
+    mettreAJourObjet,
+    ajouterSection,
+    modifierSection,
+    supprimerSection,
+    reorganiser,
+    creerEtatDesLieux,
+    obtenirEtatsDesLieux,
+    obtenirEtatDesLieux,
+    mettreAJourObjetEtatDesLieux,
+    supprimerEtatDesLieux
 } from './api/biens.js';
 import { genererPDF } from './api/pdf.js';
 
@@ -39,12 +50,29 @@ app.post('/api/auth/login', login);
 app.post('/api/biens', creerBien);
 app.get('/api/biens', obtenirBiens);
 app.get('/api/biens/:id', obtenirBien);
+app.put('/api/biens/:id', modifierBien);
+app.post('/api/biens/:id/duplicate', dupliquerBien);
 app.delete('/api/biens/:id', supprimerBien);
 
 // Routes pour les objets
 app.post('/api/biens/:bienId/objets', ajouterObjet);
 app.delete('/api/biens/:bienId/objets/:objetId', supprimerObjet);
 app.put('/api/biens/:bienId/objets/:objetId', mettreAJourObjet);
+
+// Routes pour les sections
+app.post('/api/biens/sections', ajouterSection);
+app.put('/api/biens/:bienId/sections/:sectionId', modifierSection);
+app.delete('/api/biens/:bienId/sections/:sectionId', supprimerSection);
+
+// Route pour réorganiser
+app.put('/api/biens/:bienId/reorganiser', reorganiser);
+
+// Routes pour les états des lieux
+app.post('/api/etats-des-lieux', creerEtatDesLieux);
+app.get('/api/biens/:bienId/etats-des-lieux', obtenirEtatsDesLieux);
+app.get('/api/biens/:bienId/etats-des-lieux/:etatId', obtenirEtatDesLieux);
+app.put('/api/biens/:bienId/etats-des-lieux/:etatId/objets/:objetId', mettreAJourObjetEtatDesLieux);
+app.delete('/api/biens/:bienId/etats-des-lieux/:etatId', supprimerEtatDesLieux);
 
 // Route pour générer le PDF
 app.get('/api/pdf/:bienId', genererPDF);

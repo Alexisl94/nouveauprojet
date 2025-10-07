@@ -507,3 +507,154 @@ body {
         flex-direction: column;
     }
 }
+
+/* Sections et drag and drop */
+.add-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.section-container {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+}
+
+.section-container.dragging {
+    opacity: 0.5;
+    cursor: move;
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 15px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.section-title {
+    flex: 1;
+    font-size: 1.3em;
+    color: #667eea;
+    margin: 0;
+}
+
+.section-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.drag-handle {
+    color: #9ca3af;
+    cursor: move;
+    font-size: 1.2em;
+    padding: 4px;
+    transition: color 0.2s;
+}
+
+.drag-handle:hover {
+    color: #667eea;
+}
+
+.drag-handle-cell {
+    text-align: center;
+    vertical-align: middle;
+    padding: 4px !important;
+}
+
+tr.dragging {
+    opacity: 0.5;
+    background: #f3f4f6;
+}
+
+table.etat-table {
+    position: relative;
+}
+
+tbody {
+    position: relative;
+}
+
+tbody:empty {
+    height: 50px;
+    display: block;
+}
+
+tbody:empty::after {
+    content: 'Déposez des éléments ici';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #9ca3af;
+    font-size: 0.9em;
+    font-style: italic;
+    white-space: nowrap;
+}
+
+.btn-icon {
+    background: none;
+    border: none;
+    color: #6b7280;
+    cursor: pointer;
+    padding: 6px;
+    font-size: 0.95em;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.btn-icon:hover {
+    background: #f3f4f6;
+    color: #667eea;
+}
+
+.btn-icon i {
+    pointer-events: none;
+}
+
+.etat-container {
+    margin-top: 20px;
+}
+
+/* Modaux */
+.modal label {
+    display: block;
+    margin: 15px 0;
+    font-weight: 500;
+}
+
+.modal label select,
+.modal label input[type="text"] {
+    display: block;
+    width: 100%;
+    margin-top: 5px;
+    padding: 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    font-size: 1em;
+}
+
+.modal label select:focus,
+.modal label input[type="text"]:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+/* Info état des lieux */
+.etat-info {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.etat-info p {
+    margin: 10px 0;
+}
