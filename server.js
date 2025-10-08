@@ -40,7 +40,7 @@ import {
     mettreAJourObjetEtatDesLieux,
     supprimerEtatDesLieux
 } from './api/biens.js';
-import { genererPDF } from './api/pdf.js';
+import { genererPDF, genererPDFEtat } from './api/pdf.js';
 
 // Routes d'authentification
 app.post('/api/auth/register', register);
@@ -74,8 +74,9 @@ app.get('/api/biens/:bienId/etats-des-lieux/:etatId', obtenirEtatDesLieux);
 app.put('/api/biens/:bienId/etats-des-lieux/:etatId/objets/:objetId', mettreAJourObjetEtatDesLieux);
 app.delete('/api/biens/:bienId/etats-des-lieux/:etatId', supprimerEtatDesLieux);
 
-// Route pour générer le PDF
+// Routes pour générer les PDFs
 app.get('/api/pdf/:bienId', genererPDF);
+app.get('/api/pdf/etat/:etatId', genererPDFEtat);
 
 // Démarrer le serveur
 app.listen(PORT, () => {

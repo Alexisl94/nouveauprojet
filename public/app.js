@@ -44,7 +44,6 @@ const saveSectionBtn = document.getElementById('save-section-btn');
 const objetModal = document.getElementById('objet-modal');
 const saveObjetBtn = document.getElementById('save-objet-btn');
 const demarrerEtatBtn = document.getElementById('demarrer-etat-btn');
-const viewEtatsBtn = document.getElementById('view-etats-btn');
 
 // États des lieux
 const demarrerEtatModal = document.getElementById('demarrer-etat-modal');
@@ -52,9 +51,10 @@ const etatTypeSelect = document.getElementById('etat-type');
 const etatEntreeSelector = document.getElementById('etat-entree-selector');
 const etatEntreeIdSelect = document.getElementById('etat-entree-id');
 const startEtatBtn = document.getElementById('start-etat-btn');
-const demarrerEtatFromListBtn = document.getElementById('demarrer-etat-from-list-btn');
-const backFromEtatsBtn = document.getElementById('back-from-etats-btn');
 const backFromEtatBtn = document.getElementById('back-from-etat-btn');
+const generateEtatPdfBtn = document.getElementById('generate-etat-pdf-btn');
+const terminerEtatBtn = document.getElementById('terminer-etat-btn');
+const creerEtatSortieBtn = document.getElementById('creer-etat-sortie-btn');
 
 // Fonctions utilitaires
 function showMessage(text, type = 'success') {
@@ -320,7 +320,12 @@ window.openBienDetail = async (bienId) => {
         document.getElementById('bien-adresse-display').textContent = currentBien.adresse || 'Non renseignée';
 
         biensSection.classList.add('hidden');
+        etatsListSection.classList.add('hidden');
+        etatDetailSection.classList.add('hidden');
         bienDetailSection.classList.remove('hidden');
+
+        // Charger les états réalisés
+        await loadEtatsRealises();
 
         displayEtatTable();
     } catch (error) {
@@ -336,6 +341,51 @@ backBtn.addEventListener('click', () => {
     currentBienId = null;
     currentBien = null;
 });
+
+// Charger et afficher les états réalisés
+async function loadEtatsRealises() {
+    try {
+        const response = await fetch(`/api/biens/${currentBienId}/etats-des-lieux`);
+        const data = await response.json();
+
+        // S'assurer que seuls les états du bien actuel sont affichés
+        const etatsFiltered = (data.etatsDesLieux || []).filter(etat => etat && etat.id);
+
+        displayEtatsRealises(etatsFiltered);
+    } catch (error) {
+        console.error('Erreur de chargement des états:', error);
+    }
+}
+
+function displayEtatsRealises(etats) {
+    const container = document.getElementById('etats-realises-container');
+    container.innerHTML = '';
+
+    if (etats.length === 0) {
+        container.innerHTML = '<p class="empty-state">Aucun état des lieux réalisé.</p>';
+        return;
+    }
+
+    etats.forEach(etat => {
+        const div = document.createElement('div');
+        div.className = 'item-card';
+
+        const typeLabel = etat.type === 'entree' ? '📥 Entrée' : '📤 Sortie';
+        const date = new Date(etat.dateCreation).toLocaleDateString('fr-FR');
+
+        div.innerHTML = `
+            <h3>${typeLabel} - ${etat.locataire || 'Sans locataire'}</h3>
+            <p><strong>Date:</strong> ${date}</p>
+            <p><strong>Éléments:</strong> ${etat.objets ? etat.objets.length : 0}</p>
+            <div class="item-actions">
+                <button onclick="openEtatDetail('${etat.id}')" class="btn-primary">Consulter</button>
+                <button onclick="generateEtatPdf('${etat.id}')" class="btn-secondary" title="Générer PDF"><i class="fas fa-file-pdf"></i></button>
+                <button onclick="deleteEtat('${etat.id}')" class="btn-danger" title="Supprimer"><i class="fas fa-trash"></i></button>
+            </div>
+        `;
+        container.appendChild(div);
+    });
+}
 
 // Gestion des sections
 let editingSectionId = null;
@@ -457,23 +507,21 @@ function displayEtatTable() {
         return;
     }
 
-    // Toujours afficher la section "Sans section" pour permettre le drop
-    const sansSection = document.createElement('div');
-    sansSection.className = 'section-container';
-    sansSection.dataset.sectionId = 'null'; // Marquer comme section virtuelle
-    sansSection.innerHTML = `
-        <div class="section-header">
-            <i class="fas fa-grip-vertical drag-handle"></i>
-            <h4 class="section-title">Sans section</h4>
-        </div>
-    `;
+    // Afficher la section "Sans section" uniquement s'il y a des objets sans section
+    if (objetsSansSection.length > 0) {
+        const sansSection = document.createElement('div');
+        sansSection.className = 'section-container';
+        sansSection.dataset.sectionId = 'null';
+        sansSection.innerHTML = `
+            <div class="section-header">
+                <h4 class="section-title">Sans section</h4>
+            </div>
+        `;
 
-    const table = createObjetTable(objetsSansSection);
-    sansSection.appendChild(table);
-    container.appendChild(sansSection);
-
-    // Drag and drop pour la section "Sans section"
-    setupSectionDragAndDrop(sansSection);
+        const table = createObjetTable(objetsSansSection);
+        sansSection.appendChild(table);
+        container.appendChild(sansSection);
+    }
 
     // Afficher les sections avec leurs objets
     sections.forEach(section => {
@@ -482,6 +530,7 @@ function displayEtatTable() {
         const sectionDiv = document.createElement('div');
         sectionDiv.className = 'section-container';
         sectionDiv.dataset.sectionId = section.id;
+        sectionDiv.draggable = true;
 
         sectionDiv.innerHTML = `
             <div class="section-header">
@@ -494,7 +543,6 @@ function displayEtatTable() {
             </div>
         `;
 
-        // Toujours créer un tableau (même vide) pour permettre le drop
         const table = createObjetTable(objetsSection);
         sectionDiv.appendChild(table);
 
@@ -504,7 +552,7 @@ function displayEtatTable() {
         setupSectionDragAndDrop(sectionDiv);
     });
 
-    // Setup global drag events (une seule fois après avoir créé tout le contenu)
+    // Setup global drag events
     setupGlobalSectionDragEvents();
     setupGlobalObjetDragEvents();
 }
@@ -517,8 +565,6 @@ function createObjetTable(objets) {
             <tr>
                 <th style="width: 30px;"></th>
                 <th>Élément</th>
-                <th>Entrée</th>
-                <th>Sortie</th>
                 <th>Note (1-5)</th>
                 <th>Commentaires</th>
                 <th>Actions</th>
@@ -536,14 +582,6 @@ function createObjetTable(objets) {
             <td>
                 <strong>${objet.nom}</strong>
                 ${objet.description ? `<br><small>${objet.description}</small>` : ''}
-            </td>
-            <td>
-                <input type="checkbox" ${objet.entree ? 'checked' : ''}
-                       onchange="updateObjet('${objet.id}', 'entree', this.checked)">
-            </td>
-            <td>
-                <input type="checkbox" ${objet.sortie ? 'checked' : ''}
-                       onchange="updateObjet('${objet.id}', 'sortie', this.checked)">
             </td>
             <td>
                 <select onchange="updateObjet('${objet.id}', 'note', parseInt(this.value))">
@@ -578,16 +616,16 @@ let draggedSection = null;
 
 function setupSectionDragAndDrop(sectionDiv) {
     const handle = sectionDiv.querySelector('.section-header .drag-handle');
-
     if (!handle) return;
 
-    // Le handle déclenche le drag
+    sectionDiv.draggable = false;
+
     handle.addEventListener('mousedown', () => {
-        sectionDiv.setAttribute('draggable', 'true');
+        sectionDiv.draggable = true;
     });
 
-    handle.addEventListener('mouseup', () => {
-        sectionDiv.setAttribute('draggable', 'false');
+    document.addEventListener('mouseup', () => {
+        sectionDiv.draggable = false;
     });
 
     sectionDiv.addEventListener('dragstart', (e) => {
@@ -596,15 +634,13 @@ function setupSectionDragAndDrop(sectionDiv) {
         setTimeout(() => sectionDiv.classList.add('dragging'), 0);
     });
 
-    sectionDiv.addEventListener('dragend', () => {
+    sectionDiv.addEventListener('dragend', async () => {
         sectionDiv.classList.remove('dragging');
-        sectionDiv.setAttribute('draggable', 'false');
-        setTimeout(async () => {
-            if (draggedSection) {
-                await saveSectionOrder();
-                draggedSection = null;
-            }
-        }, 0);
+        sectionDiv.draggable = false;
+        if (draggedSection) {
+            await saveSectionOrder();
+            draggedSection = null;
+        }
     });
 }
 
@@ -631,39 +667,34 @@ function setupGlobalSectionDragEvents() {
 
 // Drag and drop pour les objets
 let draggedObjet = null;
-let draggedFromTbody = null;
 
 function setupObjetDragAndDrop(row) {
     const handle = row.querySelector('.drag-handle');
-
     if (!handle) return;
 
-    // Le handle déclenche le drag
+    row.draggable = false;
+
     handle.addEventListener('mousedown', () => {
-        row.setAttribute('draggable', 'true');
+        row.draggable = true;
     });
 
-    handle.addEventListener('mouseup', () => {
-        row.setAttribute('draggable', 'false');
+    document.addEventListener('mouseup', () => {
+        row.draggable = false;
     });
 
     row.addEventListener('dragstart', (e) => {
         draggedObjet = row;
-        draggedFromTbody = row.parentElement;
         e.dataTransfer.effectAllowed = 'move';
         setTimeout(() => row.classList.add('dragging'), 0);
     });
 
-    row.addEventListener('dragend', () => {
+    row.addEventListener('dragend', async () => {
         row.classList.remove('dragging');
-        row.setAttribute('draggable', 'false');
-        setTimeout(async () => {
-            if (draggedObjet) {
-                await saveObjetOrderAndSection();
-                draggedObjet = null;
-                draggedFromTbody = null;
-            }
-        }, 0);
+        row.draggable = false;
+        if (draggedObjet) {
+            await saveObjetOrderAndSection();
+            draggedObjet = null;
+        }
     });
 }
 
@@ -837,66 +868,8 @@ generatePdfBtn.addEventListener('click', () => {
 
 // ===== GESTION DES ÉTATS DES LIEUX =====
 
-// Afficher la liste des états des lieux
-viewEtatsBtn.addEventListener('click', async () => {
-    showLoading();
-    try {
-        const response = await fetch(`/api/biens/${currentBienId}/etats-des-lieux`);
-        const data = await response.json();
-
-        bienDetailSection.classList.add('hidden');
-        etatsListSection.classList.remove('hidden');
-
-        displayEtatsList(data.etatsDesLieux);
-    } catch (error) {
-        showMessage('Erreur de chargement des états des lieux', 'error');
-    } finally {
-        hideLoading();
-    }
-});
-
-// Afficher les états des lieux
-function displayEtatsList(etats) {
-    const etatsList = document.getElementById('etats-list');
-    etatsList.innerHTML = '';
-
-    if (etats.length === 0) {
-        etatsList.innerHTML = '<p class="empty-state">Aucun état des lieux réalisé. Cliquez sur "Démarrer" pour en créer un.</p>';
-        return;
-    }
-
-    etats.forEach(etat => {
-        const div = document.createElement('div');
-        div.className = 'item-card';
-
-        const typeLabel = etat.type === 'entree' ? '📥 Entrée' : '📤 Sortie';
-        const date = new Date(etat.dateCreation).toLocaleDateString('fr-FR');
-
-        div.innerHTML = `
-            <h3>${typeLabel} - ${etat.locataire || 'Sans locataire'}</h3>
-            <p><strong>Date:</strong> ${date}</p>
-            <p><strong>Éléments:</strong> ${etat.objets ? etat.objets.length : 0}</p>
-            <div class="item-actions">
-                <button onclick="openEtatDetail('${etat.id}')" class="btn-primary">Consulter</button>
-                <button onclick="deleteEtat('${etat.id}')" class="btn-danger" title="Supprimer"><i class="fas fa-trash"></i></button>
-            </div>
-        `;
-        etatsList.appendChild(div);
-    });
-}
-
-// Retour à la page du bien depuis la liste des états
-backFromEtatsBtn.addEventListener('click', () => {
-    etatsListSection.classList.add('hidden');
-    bienDetailSection.classList.remove('hidden');
-});
-
 // Démarrer un nouvel état des lieux
 demarrerEtatBtn.addEventListener('click', () => {
-    openDemarrerEtatModal();
-});
-
-demarrerEtatFromListBtn.addEventListener('click', () => {
     openDemarrerEtatModal();
 });
 
@@ -994,6 +967,13 @@ window.openEtatDetail = async (etatId) => {
         document.getElementById('etat-locataire-display').textContent = currentEtat.locataire || 'Non renseigné';
         document.getElementById('etat-date-display').textContent = new Date(currentEtat.dateCreation).toLocaleString('fr-FR');
 
+        // Afficher le bouton "Créer état de sortie" seulement si c'est un état d'entrée
+        if (currentEtat.type === 'entree') {
+            creerEtatSortieBtn.classList.remove('hidden');
+        } else {
+            creerEtatSortieBtn.classList.add('hidden');
+        }
+
         bienDetailSection.classList.add('hidden');
         etatsListSection.classList.add('hidden');
         etatDetailSection.classList.remove('hidden');
@@ -1048,53 +1028,104 @@ function displayEtatDetail() {
 function createEtatObjetTable(objets) {
     const table = document.createElement('table');
     table.className = 'etat-table';
-    table.innerHTML = `
-        <thead>
-            <tr>
-                <th>Élément</th>
-                <th>Entrée</th>
-                <th>Sortie</th>
-                <th>Note (1-5)</th>
-                <th>Commentaires</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    `;
 
-    const tbody = table.querySelector('tbody');
-    objets.forEach(objet => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>
-                <strong>${objet.nom}</strong>
-                ${objet.description ? `<br><small>${objet.description}</small>` : ''}
-            </td>
-            <td>
-                <input type="checkbox" ${objet.entree ? 'checked' : ''}
-                       onchange="updateEtatObjet('${objet.id}', 'entree', this.checked)">
-            </td>
-            <td>
-                <input type="checkbox" ${objet.sortie ? 'checked' : ''}
-                       onchange="updateEtatObjet('${objet.id}', 'sortie', this.checked)">
-            </td>
-            <td>
-                <select onchange="updateEtatObjet('${objet.id}', 'note', parseInt(this.value))">
-                    <option value="0" ${objet.note === 0 ? 'selected' : ''}>-</option>
-                    <option value="1" ${objet.note === 1 ? 'selected' : ''}>⭐</option>
-                    <option value="2" ${objet.note === 2 ? 'selected' : ''}>⭐⭐</option>
-                    <option value="3" ${objet.note === 3 ? 'selected' : ''}>⭐⭐⭐</option>
-                    <option value="4" ${objet.note === 4 ? 'selected' : ''}>⭐⭐⭐⭐</option>
-                    <option value="5" ${objet.note === 5 ? 'selected' : ''}>⭐⭐⭐⭐⭐</option>
-                </select>
-            </td>
-            <td>
-                <input type="text" value="${objet.commentaires || ''}"
-                       placeholder="Commentaires..."
-                       onchange="updateEtatObjet('${objet.id}', 'commentaires', this.value)">
-            </td>
+    const isEtatSortie = currentEtat && currentEtat.type === 'sortie';
+
+    if (isEtatSortie) {
+        // Pour un état de sortie : colonnes entrée + sortie
+        table.innerHTML = `
+            <thead>
+                <tr>
+                    <th>Élément</th>
+                    <th>Note (1-5) entrée</th>
+                    <th>Commentaires entrée</th>
+                    <th>Note (1-5) sortie</th>
+                    <th>Commentaires sortie</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
         `;
-        tbody.appendChild(row);
-    });
+
+        const tbody = table.querySelector('tbody');
+        objets.forEach(objet => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>
+                    <strong>${objet.nom}</strong>
+                    ${objet.description ? `<br><small>${objet.description}</small>` : ''}
+                </td>
+                <td>
+                    <select disabled>
+                        <option value="0" ${objet.note === 0 ? 'selected' : ''}>-</option>
+                        <option value="1" ${objet.note === 1 ? 'selected' : ''}>⭐</option>
+                        <option value="2" ${objet.note === 2 ? 'selected' : ''}>⭐⭐</option>
+                        <option value="3" ${objet.note === 3 ? 'selected' : ''}>⭐⭐⭐</option>
+                        <option value="4" ${objet.note === 4 ? 'selected' : ''}>⭐⭐⭐⭐</option>
+                        <option value="5" ${objet.note === 5 ? 'selected' : ''}>⭐⭐⭐⭐⭐</option>
+                    </select>
+                </td>
+                <td>
+                    <input type="text" value="${objet.commentaires || ''}" disabled
+                           placeholder="Commentaires entrée...">
+                </td>
+                <td>
+                    <select onchange="updateEtatObjet('${objet.id}', 'noteSortie', parseInt(this.value))">
+                        <option value="0" ${(objet.noteSortie === 0 || !objet.noteSortie) ? 'selected' : ''}>-</option>
+                        <option value="1" ${objet.noteSortie === 1 ? 'selected' : ''}>⭐</option>
+                        <option value="2" ${objet.noteSortie === 2 ? 'selected' : ''}>⭐⭐</option>
+                        <option value="3" ${objet.noteSortie === 3 ? 'selected' : ''}>⭐⭐⭐</option>
+                        <option value="4" ${objet.noteSortie === 4 ? 'selected' : ''}>⭐⭐⭐⭐</option>
+                        <option value="5" ${objet.noteSortie === 5 ? 'selected' : ''}>⭐⭐⭐⭐⭐</option>
+                    </select>
+                </td>
+                <td>
+                    <input type="text" value="${objet.commentairesSortie || ''}"
+                           placeholder="Commentaires sortie..."
+                           onchange="updateEtatObjet('${objet.id}', 'commentairesSortie', this.value)">
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    } else {
+        // Pour un état d'entrée : colonnes simples
+        table.innerHTML = `
+            <thead>
+                <tr>
+                    <th>Élément</th>
+                    <th>Note (1-5)</th>
+                    <th>Commentaires</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        `;
+
+        const tbody = table.querySelector('tbody');
+        objets.forEach(objet => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>
+                    <strong>${objet.nom}</strong>
+                    ${objet.description ? `<br><small>${objet.description}</small>` : ''}
+                </td>
+                <td>
+                    <select onchange="updateEtatObjet('${objet.id}', 'note', parseInt(this.value))">
+                        <option value="0" ${objet.note === 0 ? 'selected' : ''}>-</option>
+                        <option value="1" ${objet.note === 1 ? 'selected' : ''}>⭐</option>
+                        <option value="2" ${objet.note === 2 ? 'selected' : ''}>⭐⭐</option>
+                        <option value="3" ${objet.note === 3 ? 'selected' : ''}>⭐⭐⭐</option>
+                        <option value="4" ${objet.note === 4 ? 'selected' : ''}>⭐⭐⭐⭐</option>
+                        <option value="5" ${objet.note === 5 ? 'selected' : ''}>⭐⭐⭐⭐⭐</option>
+                    </select>
+                </td>
+                <td>
+                    <input type="text" value="${objet.commentaires || ''}"
+                           placeholder="Commentaires..."
+                           onchange="updateEtatObjet('${objet.id}', 'commentaires', this.value)">
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
 
     return table;
 }
@@ -1133,8 +1164,8 @@ window.deleteEtat = async (etatId) => {
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Erreur de suppression');
 
-        // Recharger la liste
-        viewEtatsBtn.click();
+        // Recharger la page du bien
+        await loadEtatsRealises();
         showMessage('État des lieux supprimé');
     } catch (error) {
         showMessage(error.message, 'error');
@@ -1146,7 +1177,64 @@ window.deleteEtat = async (etatId) => {
 // Retour depuis la consultation d'un état
 backFromEtatBtn.addEventListener('click', () => {
     etatDetailSection.classList.add('hidden');
-    etatsListSection.classList.remove('hidden');
+    openBienDetail(currentBienId);
     currentEtatId = null;
     currentEtat = null;
+});
+
+// Bouton Terminer dans un état des lieux
+terminerEtatBtn.addEventListener('click', () => {
+    etatDetailSection.classList.add('hidden');
+    openBienDetail(currentBienId);
+    currentEtatId = null;
+    currentEtat = null;
+    showMessage('État des lieux terminé !');
+});
+
+// Générer le PDF de l'état en cours de consultation
+generateEtatPdfBtn.addEventListener('click', () => {
+    if (currentEtatId) {
+        window.open(`/api/pdf/etat/${currentEtatId}`, '_blank');
+    }
+});
+
+// Générer le PDF d'un état des lieux (depuis la liste)
+window.generateEtatPdf = (etatId) => {
+    window.open(`/api/pdf/etat/${etatId}`, '_blank');
+};
+
+// Créer l'état de sortie depuis un état d'entrée
+creerEtatSortieBtn.addEventListener('click', async () => {
+    if (!currentEtat || currentEtat.type !== 'entree') {
+        showMessage('Impossible de créer un état de sortie', 'error');
+        return;
+    }
+
+    const locataire = prompt('Nom du locataire (optionnel) :', currentEtat.locataire || '');
+
+    showLoading();
+    try {
+        const response = await fetch('/api/etats-des-lieux', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                bienId: currentBienId,
+                type: 'sortie',
+                locataire: locataire || currentEtat.locataire,
+                etatEntreeId: currentEtatId
+            })
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error);
+
+        showMessage('État de sortie créé !');
+
+        // Ouvrir directement l'état de sortie créé
+        await openEtatDetail(data.etatDesLieux.id);
+    } catch (error) {
+        showMessage(error.message, 'error');
+    } finally {
+        hideLoading();
+    }
 });

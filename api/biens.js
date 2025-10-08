@@ -528,7 +528,13 @@ export async function obtenirEtatsDesLieux(req, res) {
             return res.status(404).json({ error: 'Bien non trouvé' });
         }
 
-        res.json({ etatsDesLieux: bien.etatsDesLieux || [] });
+        // Filtrer pour s'assurer que seuls les états de ce bien sont retournés
+        const etatsDesLieux = (bien.etatsDesLieux || []).filter(etat => {
+            // Vérifier que l'état appartient bien à ce bien
+            return etat && etat.id;
+        });
+
+        res.json({ etatsDesLieux });
     } catch (error) {
         console.error('Erreur lors de la récupération des états des lieux:', error);
         res.status(500).json({ error: 'Erreur serveur' });

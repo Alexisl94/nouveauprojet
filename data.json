@@ -27,19 +27,292 @@
           "id": "1759767902023",
           "nom": "meuble",
           "description": "",
-          "entree": false,
+          "entree": true,
           "sortie": false,
           "note": 0,
-          "commentaires": ""
+          "commentaires": "zgre",
+          "ordre": 1,
+          "sectionId": null
         },
         {
           "id": "1759767906556",
           "nom": "sol",
           "description": "",
-          "entree": false,
+          "entree": true,
           "sortie": false,
           "note": 0,
-          "commentaires": ""
+          "commentaires": "",
+          "ordre": 0,
+          "sectionId": "1759862362532"
+        }
+      ],
+      "sections": [
+        {
+          "id": "1759862362532",
+          "nom": "Salle de bain",
+          "ordre": 0
+        }
+      ],
+      "etatsDesLieux": [
+        {
+          "id": "1759863492963",
+          "type": "entree",
+          "locataire": "",
+          "etatEntreeId": null,
+          "dateCreation": "2025-10-07T18:58:12.963Z",
+          "sections": [
+            {
+              "id": "1759862362532",
+              "nom": "Salle de bain",
+              "ordre": 0
+            }
+          ],
+          "objets": [
+            {
+              "id": "1759767902023",
+              "nom": "meuble",
+              "description": "",
+              "ordre": 0,
+              "entree": false,
+              "sortie": false,
+              "note": 2,
+              "commentaires": ""
+            },
+            {
+              "id": "1759767906556",
+              "nom": "sol",
+              "description": "",
+              "ordre": 1,
+              "entree": false,
+              "sortie": false,
+              "note": 2,
+              "commentaires": ""
+            }
+          ]
+        },
+        {
+          "id": "1759863512074",
+          "type": "sortie",
+          "locataire": "",
+          "etatEntreeId": "1759863492963",
+          "dateCreation": "2025-10-07T18:58:32.075Z",
+          "sections": [
+            {
+              "id": "1759862362532",
+              "nom": "Salle de bain",
+              "ordre": 0
+            }
+          ],
+          "objets": [
+            {
+              "id": "1759767902023",
+              "nom": "meuble",
+              "description": "",
+              "ordre": 0,
+              "entree": false,
+              "sortie": false,
+              "note": 2,
+              "commentaires": ""
+            },
+            {
+              "id": "1759767906556",
+              "nom": "sol",
+              "description": "",
+              "ordre": 1,
+              "entree": false,
+              "sortie": false,
+              "note": 2,
+              "commentaires": ""
+            }
+          ]
+        },
+        {
+          "id": "1759943312628",
+          "type": "entree",
+          "locataire": "ER",
+          "etatEntreeId": null,
+          "dateCreation": "2025-10-08T17:08:32.628Z",
+          "sections": [
+            {
+              "id": "1759862362532",
+              "nom": "Salle de bain",
+              "ordre": 0
+            }
+          ],
+          "objets": [
+            {
+              "id": "1759767902023",
+              "nom": "meuble",
+              "description": "",
+              "sectionId": null,
+              "ordre": 1,
+              "entree": false,
+              "sortie": false,
+              "note": 1,
+              "commentaires": "rezr"
+            },
+            {
+              "id": "1759767906556",
+              "nom": "sol",
+              "description": "",
+              "sectionId": "1759862362532",
+              "ordre": 0,
+              "entree": false,
+              "sortie": false,
+              "note": 1,
+              "commentaires": "ere"
+            }
+          ]
+        },
+        {
+          "id": "1759943336198",
+          "type": "sortie",
+          "locataire": "ER",
+          "etatEntreeId": "1759863492963",
+          "dateCreation": "2025-10-08T17:08:56.198Z",
+          "sections": [
+            {
+              "id": "1759862362532",
+              "nom": "Salle de bain",
+              "ordre": 0
+            }
+          ],
+          "objets": [
+            {
+              "id": "1759767902023",
+              "nom": "meuble",
+              "description": "",
+              "ordre": 0,
+              "entree": false,
+              "sortie": false,
+              "note": 2,
+              "commentaires": ""
+            },
+            {
+              "id": "1759767906556",
+              "nom": "sol",
+              "description": "",
+              "ordre": 1,
+              "entree": false,
+              "sortie": false,
+              "note": 2,
+              "commentaires": ""
+            }
+          ]
+        },
+        {
+          "id": "1759944294307",
+          "type": "entree",
+          "locataire": "rearez",
+          "etatEntreeId": null,
+          "dateCreation": "2025-10-08T17:24:54.307Z",
+          "sections": [
+            {
+              "id": "1759862362532",
+              "nom": "Salle de bain",
+              "ordre": 0
+            }
+          ],
+          "objets": [
+            {
+              "id": "1759767902023",
+              "nom": "meuble",
+              "description": "",
+              "sectionId": null,
+              "ordre": 1,
+              "entree": false,
+              "sortie": false,
+              "note": 0,
+              "commentaires": ""
+            },
+            {
+              "id": "1759767906556",
+              "nom": "sol",
+              "description": "",
+              "sectionId": "1759862362532",
+              "ordre": 0,
+              "entree": false,
+              "sortie": false,
+              "note": 0,
+              "commentaires": ""
+            }
+          ]
+        },
+        {
+          "id": "1759945517096",
+          "type": "entree",
+          "locataire": "Alexis",
+          "etatEntreeId": null,
+          "dateCreation": "2025-10-08T17:45:17.096Z",
+          "sections": [
+            {
+              "id": "1759862362532",
+              "nom": "Salle de bain",
+              "ordre": 0
+            }
+          ],
+          "objets": [
+            {
+              "id": "1759767902023",
+              "nom": "meuble",
+              "description": "",
+              "sectionId": null,
+              "ordre": 1,
+              "entree": false,
+              "sortie": false,
+              "note": 1,
+              "commentaires": "rezrez"
+            },
+            {
+              "id": "1759767906556",
+              "nom": "sol",
+              "description": "",
+              "sectionId": "1759862362532",
+              "ordre": 0,
+              "entree": false,
+              "sortie": false,
+              "note": 3,
+              "commentaires": "rezr"
+            }
+          ]
+        },
+        {
+          "id": "1759945531855",
+          "type": "sortie",
+          "locataire": "Alexis",
+          "etatEntreeId": "1759945517096",
+          "dateCreation": "2025-10-08T17:45:31.855Z",
+          "sections": [
+            {
+              "id": "1759862362532",
+              "nom": "Salle de bain",
+              "ordre": 0
+            }
+          ],
+          "objets": [
+            {
+              "id": "1759767902023",
+              "nom": "meuble",
+              "description": "",
+              "sectionId": null,
+              "ordre": 1,
+              "entree": false,
+              "sortie": false,
+              "note": 1,
+              "commentaires": "rezrez"
+            },
+            {
+              "id": "1759767906556",
+              "nom": "sol",
+              "description": "",
+              "sectionId": "1759862362532",
+              "ordre": 0,
+              "entree": false,
+              "sortie": false,
+              "note": 3,
+              "commentaires": "rezr"
+            }
+          ]
         }
       ]
     },
@@ -94,6 +367,363 @@
           "sortie": false,
           "note": 0,
           "commentaires": ""
+        }
+      ]
+    },
+    {
+      "id": "1759861174629",
+      "proprietaireId": "1759767887409",
+      "nom": "33 rue Simart",
+      "adresse": "rue marcel deplantay",
+      "creeLe": "2025-10-07T18:19:34.629Z",
+      "objets": [
+        {
+          "id": "1759861211186",
+          "nom": "Mur",
+          "description": "rezraze",
+          "entree": true,
+          "sortie": false,
+          "note": 0,
+          "commentaires": ""
+        }
+      ]
+    },
+    {
+      "id": "1759862373947",
+      "proprietaireId": "1759767887409",
+      "nom": "Test (Copie)",
+      "adresse": "",
+      "creeLe": "2025-10-07T18:39:33.947Z",
+      "sections": [],
+      "objets": [
+        {
+          "id": "1759862373948-cy8l8h0fy-0",
+          "nom": "meuble",
+          "description": "",
+          "entree": false,
+          "sortie": false,
+          "note": 0,
+          "commentaires": "",
+          "sectionId": null,
+          "ordre": 0
+        },
+        {
+          "id": "1759862403200",
+          "nom": "fezf",
+          "description": "fezfza",
+          "entree": false,
+          "sortie": false,
+          "note": 0,
+          "commentaires": "",
+          "sectionId": null,
+          "ordre": 2
+        }
+      ]
+    },
+    {
+      "id": "1759862604996",
+      "proprietaireId": "1759767887409",
+      "nom": "vrevf",
+      "adresse": "afa",
+      "creeLe": "2025-10-07T18:43:24.996Z",
+      "sections": [
+        {
+          "id": "1759862610644",
+          "nom": "rezarr",
+          "ordre": 0
+        }
+      ],
+      "objets": [
+        {
+          "id": "1759862613749",
+          "nom": "razer",
+          "description": "rere",
+          "entree": false,
+          "sortie": false,
+          "note": 0,
+          "commentaires": "",
+          "sectionId": null,
+          "ordre": 0
+        }
+      ]
+    },
+    {
+      "id": "1759942932033",
+      "proprietaireId": "1759767887409",
+      "nom": "Roquette",
+      "adresse": "4 cité de la roquette",
+      "creeLe": "2025-10-08T17:02:12.033Z",
+      "sections": [
+        {
+          "id": "1759942941752",
+          "nom": "Salon",
+          "ordre": 0
+        }
+      ],
+      "objets": [
+        {
+          "id": "1759942957130",
+          "nom": "1",
+          "description": "",
+          "entree": false,
+          "sortie": false,
+          "note": 0,
+          "commentaires": "",
+          "sectionId": "1759942941752",
+          "ordre": 3
+        },
+        {
+          "id": "1759942959743",
+          "nom": "2",
+          "description": "",
+          "entree": false,
+          "sortie": false,
+          "note": 0,
+          "commentaires": "",
+          "sectionId": null,
+          "ordre": 1
+        },
+        {
+          "id": "1759942962063",
+          "nom": "3",
+          "description": "",
+          "entree": false,
+          "sortie": false,
+          "note": 0,
+          "commentaires": "",
+          "sectionId": null,
+          "ordre": 0
+        },
+        {
+          "id": "1759943878599",
+          "nom": "fezf",
+          "description": "",
+          "entree": false,
+          "sortie": false,
+          "note": 0,
+          "commentaires": "",
+          "sectionId": "1759942941752",
+          "ordre": 2
+        }
+      ],
+      "etatsDesLieux": [
+        {
+          "id": "1759943044952",
+          "type": "entree",
+          "locataire": "Alexis",
+          "etatEntreeId": null,
+          "dateCreation": "2025-10-08T17:04:04.952Z",
+          "sections": [
+            {
+              "id": "1759942941752",
+              "nom": "Salon",
+              "ordre": 0
+            }
+          ],
+          "objets": [
+            {
+              "id": "1759942957130",
+              "nom": "1",
+              "description": "",
+              "sectionId": null,
+              "ordre": 0,
+              "entree": true,
+              "sortie": false,
+              "note": 1,
+              "commentaires": "bien"
+            },
+            {
+              "id": "1759942959743",
+              "nom": "2",
+              "description": "",
+              "sectionId": null,
+              "ordre": 2,
+              "entree": true,
+              "sortie": false,
+              "note": 4,
+              "commentaires": ""
+            },
+            {
+              "id": "1759942962063",
+              "nom": "3",
+              "description": "",
+              "sectionId": null,
+              "ordre": 1,
+              "entree": true,
+              "sortie": false,
+              "note": 2,
+              "commentaires": "bien"
+            }
+          ]
+        },
+        {
+          "id": "1759943076757",
+          "type": "sortie",
+          "locataire": "Alexis",
+          "etatEntreeId": "1759943044952",
+          "dateCreation": "2025-10-08T17:04:36.757Z",
+          "sections": [
+            {
+              "id": "1759942941752",
+              "nom": "Salon",
+              "ordre": 0
+            }
+          ],
+          "objets": [
+            {
+              "id": "1759942957130",
+              "nom": "1",
+              "description": "",
+              "sectionId": null,
+              "ordre": 0,
+              "entree": true,
+              "sortie": false,
+              "note": 1,
+              "commentaires": "bien"
+            },
+            {
+              "id": "1759942959743",
+              "nom": "2",
+              "description": "",
+              "sectionId": null,
+              "ordre": 2,
+              "entree": true,
+              "sortie": false,
+              "note": 4,
+              "commentaires": ""
+            },
+            {
+              "id": "1759942962063",
+              "nom": "3",
+              "description": "",
+              "sectionId": null,
+              "ordre": 1,
+              "entree": true,
+              "sortie": false,
+              "note": 2,
+              "commentaires": "bien"
+            }
+          ]
+        },
+        {
+          "id": "1759943888731",
+          "type": "entree",
+          "locataire": "Jean",
+          "etatEntreeId": null,
+          "dateCreation": "2025-10-08T17:18:08.731Z",
+          "sections": [
+            {
+              "id": "1759942941752",
+              "nom": "Salon",
+              "ordre": 0
+            }
+          ],
+          "objets": [
+            {
+              "id": "1759942957130",
+              "nom": "1",
+              "description": "",
+              "sectionId": "1759942941752",
+              "ordre": 3,
+              "entree": false,
+              "sortie": false,
+              "note": 2,
+              "commentaires": ""
+            },
+            {
+              "id": "1759942959743",
+              "nom": "2",
+              "description": "",
+              "sectionId": null,
+              "ordre": 1,
+              "entree": false,
+              "sortie": false,
+              "note": 2,
+              "commentaires": ""
+            },
+            {
+              "id": "1759942962063",
+              "nom": "3",
+              "description": "",
+              "sectionId": null,
+              "ordre": 0,
+              "entree": false,
+              "sortie": false,
+              "note": 1,
+              "commentaires": ""
+            },
+            {
+              "id": "1759943878599",
+              "nom": "fezf",
+              "description": "",
+              "sectionId": "1759942941752",
+              "ordre": 2,
+              "entree": false,
+              "sortie": false,
+              "note": 4,
+              "commentaires": ""
+            }
+          ]
+        },
+        {
+          "id": "1759943943944",
+          "type": "sortie",
+          "locataire": "ER",
+          "etatEntreeId": "1759943888731",
+          "dateCreation": "2025-10-08T17:19:03.944Z",
+          "sections": [
+            {
+              "id": "1759942941752",
+              "nom": "Salon",
+              "ordre": 0
+            }
+          ],
+          "objets": [
+            {
+              "id": "1759942957130",
+              "nom": "1",
+              "description": "",
+              "sectionId": "1759942941752",
+              "ordre": 3,
+              "entree": false,
+              "sortie": false,
+              "note": 2,
+              "commentaires": ""
+            },
+            {
+              "id": "1759942959743",
+              "nom": "2",
+              "description": "",
+              "sectionId": null,
+              "ordre": 1,
+              "entree": false,
+              "sortie": false,
+              "note": 2,
+              "commentaires": ""
+            },
+            {
+              "id": "1759942962063",
+              "nom": "3",
+              "description": "",
+              "sectionId": null,
+              "ordre": 0,
+              "entree": false,
+              "sortie": false,
+              "note": 1,
+              "commentaires": ""
+            },
+            {
+              "id": "1759943878599",
+              "nom": "fezf",
+              "description": "",
+              "sectionId": "1759942941752",
+              "ordre": 2,
+              "entree": false,
+              "sortie": false,
+              "note": 4,
+              "commentaires": ""
+            }
+          ]
         }
       ]
     }
