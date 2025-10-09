@@ -1,19 +1,4 @@
-import fs from 'fs/promises';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const dataPath = join(__dirname, '../data.json');
-
-async function loadData() {
-    const data = await fs.readFile(dataPath, 'utf-8');
-    return JSON.parse(data);
-}
-
-async function saveData(data) {
-    await fs.writeFile(dataPath, JSON.stringify(data, null, 2));
-}
+import { supabase } from '../lib/supabase.js';
 
 // Créer un bien
 export async function creerBien(req, res) {
@@ -24,27 +9,46 @@ export async function creerBien(req, res) {
             return res.status(400).json({ error: 'ID propriétaire et nom du bien requis' });
         }
 
-        const data = await loadData();
+        // Vérifier que le propriétaire existe
+        const { data: proprietaire, error: propError } = await supabase
+            .from('proprietaires')
+            .select('id')
+            .eq('id', proprietaireId)
+            .single();
 
-        if (!data.proprietaires.find(p => p.id === proprietaireId)) {
+        if (propError || !proprietaire) {
             return res.status(404).json({ error: 'Propriétaire non trouvé' });
         }
 
-        const bien = {
-            id: Date.now().toString(),
-            proprietaireId,
-            nom,
-            adresse: adresse || '',
-            creeLe: new Date().toISOString(),
-            sections: [],
-            objets: [],
-            etatsDesLieux: [] // Stocke les états des lieux réalisés
-        };
+        // Créer le bien
+        const { data: bien, error } = await supabase
+            .from('biens')
+            .insert([{
+                proprietaire_id: proprietaireId,
+                nom,
+                adresse: adresse || ''
+            }])
+            .select()
+            .single();
 
-        data.biens.push(bien);
-        await saveData(data);
+        if (error) {
+            console.error('Erreur Supabase lors de la création du bien:', error);
+            return res.status(500).json({ error: 'Erreur serveur' });
+        }
 
-        res.json({ bien });
+        // Retourner le bien avec les propriétés attendues par le frontend
+        res.json({
+            bien: {
+                id: bien.id,
+                proprietaireId: bien.proprietaire_id,
+                nom: bien.nom,
+                adresse: bien.adresse,
+                creeLe: bien.cree_le,
+                sections: [],
+                objets: [],
+                etatsDesLieux: []
+            }
+        });
     } catch (error) {
         console.error('Erreur lors de la création du bien:', error);
         res.status(500).json({ error: 'Erreur serveur' });
@@ -60,10 +64,53 @@ export async function obtenirBiens(req, res) {
             return res.status(400).json({ error: 'ID propriétaire requis' });
         }
 
-        const data = await loadData();
-        const biens = data.biens.filter(b => b.proprietaireId === proprietaireId);
+        // Récupérer les biens
+        const { data: biens, error: biensError } = await supabase
+            .from('biens')
+            .select('*')
+            .eq('proprietaire_id', proprietaireId);
 
-        res.json({ biens });
+        if (biensError) {
+            console.error('Erreur Supabase:', biensError);
+            return res.status(500).json({ error: 'Erreur serveur' });
+        }
+
+        // Pour chaque bien, récupérer ses sections, objets et états des lieux
+        const biensComplets = await Promise.all(biens.map(async (bien) => {
+            // Récupérer les sections
+            const { data: sections } = await supabase
+                .from('sections')
+                .select('*')
+                .eq('bien_id', bien.id)
+                .order('ordre');
+
+            // Récupérer les objets
+            const { data: objets } = await supabase
+                .from('objets')
+                .select('*')
+                .eq('bien_id', bien.id)
+                .order('ordre');
+
+            // Récupérer les états des lieux
+            const { data: etatsDesLieux } = await supabase
+                .from('etats_des_lieux')
+                .select('*')
+                .eq('bien_id', bien.id)
+                .order('date_creation', { ascending: false });
+
+            return {
+                id: bien.id,
+                proprietaireId: bien.proprietaire_id,
+                nom: bien.nom,
+                adresse: bien.adresse,
+                creeLe: bien.cree_le,
+                sections: sections || [],
+                objets: objets || [],
+                etatsDesLieux: etatsDesLieux || []
+            };
+        }));
+
+        res.json({ biens: biensComplets });
     } catch (error) {
         console.error('Erreur lors de la récupération des biens:', error);
         res.status(500).json({ error: 'Erreur serveur' });
@@ -75,14 +122,49 @@ export async function obtenirBien(req, res) {
     try {
         const { id } = req.params;
 
-        const data = await loadData();
-        const bien = data.biens.find(b => b.id === id);
+        const { data: bien, error } = await supabase
+            .from('biens')
+            .select('*')
+            .eq('id', id)
+            .single();
 
-        if (!bien) {
+        if (error || !bien) {
             return res.status(404).json({ error: 'Bien non trouvé' });
         }
 
-        res.json({ bien });
+        // Récupérer les sections
+        const { data: sections } = await supabase
+            .from('sections')
+            .select('*')
+            .eq('bien_id', bien.id)
+            .order('ordre');
+
+        // Récupérer les objets
+        const { data: objets } = await supabase
+            .from('objets')
+            .select('*')
+            .eq('bien_id', bien.id)
+            .order('ordre');
+
+        // Récupérer les états des lieux
+        const { data: etatsDesLieux } = await supabase
+            .from('etats_des_lieux')
+            .select('*')
+            .eq('bien_id', bien.id)
+            .order('date_creation', { ascending: false });
+
+        res.json({
+            bien: {
+                id: bien.id,
+                proprietaireId: bien.proprietaire_id,
+                nom: bien.nom,
+                adresse: bien.adresse,
+                creeLe: bien.cree_le,
+                sections: sections || [],
+                objets: objets || [],
+                etatsDesLieux: etatsDesLieux || []
+            }
+        });
     } catch (error) {
         console.error('Erreur lors de la récupération du bien:', error);
         res.status(500).json({ error: 'Erreur serveur' });
@@ -94,15 +176,15 @@ export async function supprimerBien(req, res) {
     try {
         const { id } = req.params;
 
-        const data = await loadData();
-        const index = data.biens.findIndex(b => b.id === id);
+        const { error } = await supabase
+            .from('biens')
+            .delete()
+            .eq('id', id);
 
-        if (index === -1) {
-            return res.status(404).json({ error: 'Bien non trouvé' });
+        if (error) {
+            console.error('Erreur Supabase:', error);
+            return res.status(500).json({ error: 'Erreur serveur' });
         }
-
-        data.biens.splice(index, 1);
-        await saveData(data);
 
         res.json({ success: true });
     } catch (error) {
@@ -120,29 +202,49 @@ export async function ajouterObjet(req, res) {
             return res.status(400).json({ error: 'ID bien et nom de l\'objet requis' });
         }
 
-        const data = await loadData();
-        const bien = data.biens.find(b => b.id === bienId);
+        // Vérifier que le bien existe
+        const { data: bien, error: bienError } = await supabase
+            .from('biens')
+            .select('id')
+            .eq('id', bienId)
+            .single();
 
-        if (!bien) {
+        if (bienError || !bien) {
             return res.status(404).json({ error: 'Bien non trouvé' });
         }
 
-        const objet = {
-            id: Date.now().toString(),
-            nom,
-            description: description || '',
-            entree: false,
-            sortie: false,
-            note: 0,
-            commentaires: '',
-            sectionId: sectionId || null,
-            ordre: bien.objets.length
-        };
+        // Obtenir le nombre d'objets existants pour l'ordre
+        const { count } = await supabase
+            .from('objets')
+            .select('*', { count: 'exact', head: true })
+            .eq('bien_id', bienId);
 
-        bien.objets.push(objet);
-        await saveData(data);
+        const { data: objet, error } = await supabase
+            .from('objets')
+            .insert([{
+                bien_id: bienId,
+                nom,
+                description: description || '',
+                section_id: sectionId || null,
+                ordre: count || 0
+            }])
+            .select()
+            .single();
 
-        res.json({ objet });
+        if (error) {
+            console.error('Erreur Supabase:', error);
+            return res.status(500).json({ error: 'Erreur serveur' });
+        }
+
+        res.json({
+            objet: {
+                id: objet.id,
+                nom: objet.nom,
+                description: objet.description,
+                sectionId: objet.section_id,
+                ordre: objet.ordre
+            }
+        });
     } catch (error) {
         console.error('Erreur lors de l\'ajout de l\'objet:', error);
         res.status(500).json({ error: 'Erreur serveur' });
@@ -154,21 +256,16 @@ export async function supprimerObjet(req, res) {
     try {
         const { bienId, objetId } = req.params;
 
-        const data = await loadData();
-        const bien = data.biens.find(b => b.id === bienId);
+        const { error } = await supabase
+            .from('objets')
+            .delete()
+            .eq('id', objetId)
+            .eq('bien_id', bienId);
 
-        if (!bien) {
-            return res.status(404).json({ error: 'Bien non trouvé' });
+        if (error) {
+            console.error('Erreur Supabase:', error);
+            return res.status(500).json({ error: 'Erreur serveur' });
         }
-
-        const index = bien.objets.findIndex(o => o.id === objetId);
-
-        if (index === -1) {
-            return res.status(404).json({ error: 'Objet non trouvé' });
-        }
-
-        bien.objets.splice(index, 1);
-        await saveData(data);
 
         res.json({ success: true });
     } catch (error) {
@@ -186,27 +283,35 @@ export async function mettreAJourObjet(req, res) {
             return res.status(400).json({ error: 'ID bien et ID objet requis' });
         }
 
-        const data = await loadData();
-        const bien = data.biens.find(b => b.id === bienId);
+        const updates = {};
+        if (sectionId !== undefined) updates.section_id = sectionId;
 
-        if (!bien) {
-            return res.status(404).json({ error: 'Bien non trouvé' });
+        const { data: objet, error } = await supabase
+            .from('objets')
+            .update(updates)
+            .eq('id', objetId)
+            .eq('bien_id', bienId)
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Erreur Supabase:', error);
+            return res.status(500).json({ error: 'Erreur serveur' });
         }
-
-        const objet = bien.objets.find(o => o.id === objetId);
 
         if (!objet) {
             return res.status(404).json({ error: 'Objet non trouvé' });
         }
 
-        if (entree !== undefined) objet.entree = entree;
-        if (sortie !== undefined) objet.sortie = sortie;
-        if (note !== undefined) objet.note = note;
-        if (commentaires !== undefined) objet.commentaires = commentaires;
-        if (sectionId !== undefined) objet.sectionId = sectionId;
-
-        await saveData(data);
-        res.json({ objet });
+        res.json({
+            objet: {
+                id: objet.id,
+                nom: objet.nom,
+                description: objet.description,
+                sectionId: objet.section_id,
+                ordre: objet.ordre
+            }
+        });
     } catch (error) {
         console.error('Erreur lors de la mise à jour:', error);
         res.status(500).json({ error: 'Erreur serveur' });
@@ -223,18 +328,30 @@ export async function modifierBien(req, res) {
             return res.status(400).json({ error: 'Le nom du bien est requis' });
         }
 
-        const data = await loadData();
-        const bien = data.biens.find(b => b.id === id);
+        const updates = { nom };
+        if (adresse !== undefined) updates.adresse = adresse;
 
-        if (!bien) {
+        const { data: bien, error } = await supabase
+            .from('biens')
+            .update(updates)
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error || !bien) {
+            console.error('Erreur Supabase:', error);
             return res.status(404).json({ error: 'Bien non trouvé' });
         }
 
-        bien.nom = nom;
-        if (adresse !== undefined) bien.adresse = adresse;
-
-        await saveData(data);
-        res.json({ bien });
+        res.json({
+            bien: {
+                id: bien.id,
+                proprietaireId: bien.proprietaire_id,
+                nom: bien.nom,
+                adresse: bien.adresse,
+                creeLe: bien.cree_le
+            }
+        });
     } catch (error) {
         console.error('Erreur lors de la modification du bien:', error);
         res.status(500).json({ error: 'Erreur serveur' });
@@ -246,42 +363,88 @@ export async function dupliquerBien(req, res) {
     try {
         const { id } = req.params;
 
-        const data = await loadData();
-        const bienOriginal = data.biens.find(b => b.id === id);
+        // Récupérer le bien original
+        const { data: bienOriginal, error: bienError } = await supabase
+            .from('biens')
+            .select('*')
+            .eq('id', id)
+            .single();
 
-        if (!bienOriginal) {
+        if (bienError || !bienOriginal) {
             return res.status(404).json({ error: 'Bien non trouvé' });
         }
 
-        // Créer une copie du bien avec un nouvel ID
-        const bienDuplique = {
-            id: Date.now().toString(),
-            proprietaireId: bienOriginal.proprietaireId,
-            nom: `${bienOriginal.nom} (Copie)`,
-            adresse: bienOriginal.adresse,
-            creeLe: new Date().toISOString(),
-            sections: (bienOriginal.sections || []).map(section => ({
-                id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                nom: section.nom,
-                ordre: section.ordre
-            })),
-            objets: bienOriginal.objets.map((objet, index) => ({
-                id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${index}`,
-                nom: objet.nom,
-                description: objet.description,
-                entree: false,
-                sortie: false,
-                note: 0,
-                commentaires: '',
-                sectionId: objet.sectionId || null,
-                ordre: objet.ordre || index
-            }))
-        };
+        // Créer le bien dupliqué
+        const { data: bienDuplique, error: dupError } = await supabase
+            .from('biens')
+            .insert([{
+                proprietaire_id: bienOriginal.proprietaire_id,
+                nom: `${bienOriginal.nom} (Copie)`,
+                adresse: bienOriginal.adresse
+            }])
+            .select()
+            .single();
 
-        data.biens.push(bienDuplique);
-        await saveData(data);
+        if (dupError) {
+            console.error('Erreur Supabase:', dupError);
+            return res.status(500).json({ error: 'Erreur serveur' });
+        }
 
-        res.json({ bien: bienDuplique });
+        // Récupérer et dupliquer les sections
+        const { data: sectionsOriginales } = await supabase
+            .from('sections')
+            .select('*')
+            .eq('bien_id', id);
+
+        const sectionMap = {};
+        if (sectionsOriginales && sectionsOriginales.length > 0) {
+            const { data: sectionsDupliquees } = await supabase
+                .from('sections')
+                .insert(sectionsOriginales.map(s => ({
+                    bien_id: bienDuplique.id,
+                    nom: s.nom,
+                    ordre: s.ordre
+                })))
+                .select();
+
+            // Créer un mapping entre anciennes et nouvelles sections
+            sectionsOriginales.forEach((sOrig, index) => {
+                if (sectionsDupliquees && sectionsDupliquees[index]) {
+                    sectionMap[sOrig.id] = sectionsDupliquees[index].id;
+                }
+            });
+        }
+
+        // Récupérer et dupliquer les objets
+        const { data: objetsOriginaux } = await supabase
+            .from('objets')
+            .select('*')
+            .eq('bien_id', id);
+
+        if (objetsOriginaux && objetsOriginaux.length > 0) {
+            await supabase
+                .from('objets')
+                .insert(objetsOriginaux.map(o => ({
+                    bien_id: bienDuplique.id,
+                    nom: o.nom,
+                    description: o.description,
+                    section_id: o.section_id ? sectionMap[o.section_id] || null : null,
+                    ordre: o.ordre
+                })));
+        }
+
+        res.json({
+            bien: {
+                id: bienDuplique.id,
+                proprietaireId: bienDuplique.proprietaire_id,
+                nom: bienDuplique.nom,
+                adresse: bienDuplique.adresse,
+                creeLe: bienDuplique.cree_le,
+                sections: [],
+                objets: [],
+                etatsDesLieux: []
+            }
+        });
     } catch (error) {
         console.error('Erreur lors de la duplication du bien:', error);
         res.status(500).json({ error: 'Erreur serveur' });
@@ -297,25 +460,37 @@ export async function ajouterSection(req, res) {
             return res.status(400).json({ error: 'ID bien et nom de la section requis' });
         }
 
-        const data = await loadData();
-        const bien = data.biens.find(b => b.id === bienId);
+        // Vérifier que le bien existe
+        const { data: bien, error: bienError } = await supabase
+            .from('biens')
+            .select('id')
+            .eq('id', bienId)
+            .single();
 
-        if (!bien) {
+        if (bienError || !bien) {
             return res.status(404).json({ error: 'Bien non trouvé' });
         }
 
-        if (!bien.sections) {
-            bien.sections = [];
+        // Obtenir le nombre de sections existantes
+        const { count } = await supabase
+            .from('sections')
+            .select('*', { count: 'exact', head: true })
+            .eq('bien_id', bienId);
+
+        const { data: section, error } = await supabase
+            .from('sections')
+            .insert([{
+                bien_id: bienId,
+                nom,
+                ordre: count || 0
+            }])
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Erreur Supabase:', error);
+            return res.status(500).json({ error: 'Erreur serveur' });
         }
-
-        const section = {
-            id: Date.now().toString(),
-            nom,
-            ordre: bien.sections.length
-        };
-
-        bien.sections.push(section);
-        await saveData(data);
 
         res.json({ section });
     } catch (error) {
@@ -334,21 +509,18 @@ export async function modifierSection(req, res) {
             return res.status(400).json({ error: 'Le nom de la section est requis' });
         }
 
-        const data = await loadData();
-        const bien = data.biens.find(b => b.id === bienId);
+        const { data: section, error } = await supabase
+            .from('sections')
+            .update({ nom })
+            .eq('id', sectionId)
+            .eq('bien_id', bienId)
+            .select()
+            .single();
 
-        if (!bien) {
-            return res.status(404).json({ error: 'Bien non trouvé' });
-        }
-
-        const section = (bien.sections || []).find(s => s.id === sectionId);
-
-        if (!section) {
+        if (error || !section) {
+            console.error('Erreur Supabase:', error);
             return res.status(404).json({ error: 'Section non trouvée' });
         }
-
-        section.nom = nom;
-        await saveData(data);
 
         res.json({ section });
     } catch (error) {
@@ -362,32 +534,23 @@ export async function supprimerSection(req, res) {
     try {
         const { bienId, sectionId } = req.params;
 
-        const data = await loadData();
-        const bien = data.biens.find(b => b.id === bienId);
+        // Mettre à null le section_id des objets de cette section
+        await supabase
+            .from('objets')
+            .update({ section_id: null })
+            .eq('section_id', sectionId);
 
-        if (!bien) {
-            return res.status(404).json({ error: 'Bien non trouvé' });
+        // Supprimer la section
+        const { error } = await supabase
+            .from('sections')
+            .delete()
+            .eq('id', sectionId)
+            .eq('bien_id', bienId);
+
+        if (error) {
+            console.error('Erreur Supabase:', error);
+            return res.status(500).json({ error: 'Erreur serveur' });
         }
-
-        if (!bien.sections) {
-            return res.status(404).json({ error: 'Section non trouvée' });
-        }
-
-        const index = bien.sections.findIndex(s => s.id === sectionId);
-
-        if (index === -1) {
-            return res.status(404).json({ error: 'Section non trouvée' });
-        }
-
-        // Mettre à null le sectionId des objets de cette section
-        bien.objets.forEach(objet => {
-            if (objet.sectionId === sectionId) {
-                objet.sectionId = null;
-            }
-        });
-
-        bien.sections.splice(index, 1);
-        await saveData(data);
 
         res.json({ success: true });
     } catch (error) {
@@ -402,37 +565,32 @@ export async function reorganiser(req, res) {
         const { bienId } = req.params;
         const { sections, objets } = req.body;
 
-        const data = await loadData();
-        const bien = data.biens.find(b => b.id === bienId);
-
-        if (!bien) {
-            return res.status(404).json({ error: 'Bien non trouvé' });
-        }
-
         // Mettre à jour l'ordre des sections si fourni
         if (sections) {
-            sections.forEach((sectionUpdate, index) => {
-                const section = (bien.sections || []).find(s => s.id === sectionUpdate.id);
-                if (section) {
-                    section.ordre = index;
-                }
-            });
+            for (let index = 0; index < sections.length; index++) {
+                await supabase
+                    .from('sections')
+                    .update({ ordre: index })
+                    .eq('id', sections[index].id)
+                    .eq('bien_id', bienId);
+            }
         }
 
         // Mettre à jour l'ordre et la section des objets si fourni
         if (objets) {
-            objets.forEach((objetUpdate, index) => {
-                const objet = bien.objets.find(o => o.id === objetUpdate.id);
-                if (objet) {
-                    objet.ordre = index;
-                    if (objetUpdate.sectionId !== undefined) {
-                        objet.sectionId = objetUpdate.sectionId;
-                    }
+            for (let index = 0; index < objets.length; index++) {
+                const updates = { ordre: index };
+                if (objets[index].sectionId !== undefined) {
+                    updates.section_id = objets[index].sectionId;
                 }
-            });
+                await supabase
+                    .from('objets')
+                    .update(updates)
+                    .eq('id', objets[index].id)
+                    .eq('bien_id', bienId);
+            }
         }
 
-        await saveData(data);
         res.json({ success: true });
     } catch (error) {
         console.error('Erreur lors de la réorganisation:', error);
@@ -453,63 +611,107 @@ export async function creerEtatDesLieux(req, res) {
             return res.status(400).json({ error: 'Type invalide (entree ou sortie)' });
         }
 
-        const data = await loadData();
-        const bien = data.biens.find(b => b.id === bienId);
+        // Vérifier que le bien existe
+        const { data: bien, error: bienError } = await supabase
+            .from('biens')
+            .select('id')
+            .eq('id', bienId)
+            .single();
 
-        if (!bien) {
+        if (bienError || !bien) {
             return res.status(404).json({ error: 'Bien non trouvé' });
         }
 
-        if (!bien.etatsDesLieux) {
-            bien.etatsDesLieux = [];
-        }
-
-        // Pour une sortie, vérifier que l'état d'entrée existe
         let objetsCopies = [];
         if (type === 'sortie') {
             if (!etatEntreeId) {
                 return res.status(400).json({ error: 'ID état d\'entrée requis pour une sortie' });
             }
 
-            const etatEntree = bien.etatsDesLieux.find(e => e.id === etatEntreeId);
-            if (!etatEntree) {
+            // Vérifier que l'état d'entrée existe
+            const { data: etatEntree, error: etatError } = await supabase
+                .from('etats_des_lieux')
+                .select('id')
+                .eq('id', etatEntreeId)
+                .single();
+
+            if (etatError || !etatEntree) {
                 return res.status(404).json({ error: 'État d\'entrée non trouvé' });
             }
 
-            // Copier les objets de l'état d'entrée avec les notes
-            objetsCopies = etatEntree.objets.map(obj => ({
-                ...obj,
-                sortie: false // Réinitialiser le checkbox sortie
-            }));
+            // Copier les objets de l'état d'entrée
+            const { data: objetsEntree } = await supabase
+                .from('objets_etat_des_lieux')
+                .select('*')
+                .eq('etat_des_lieux_id', etatEntreeId)
+                .order('ordre');
+
+            objetsCopies = objetsEntree || [];
         } else {
-            // Pour une entrée, copier les objets du template (bien) sans les notes
-            objetsCopies = bien.objets.map(obj => ({
-                id: obj.id,
-                nom: obj.nom,
-                description: obj.description,
-                sectionId: obj.sectionId,
-                ordre: obj.ordre,
-                entree: false,
-                sortie: false,
-                note: 0,
-                commentaires: ''
-            }));
+            // Pour une entrée, copier les objets du template (bien)
+            const { data: objetsTemplate } = await supabase
+                .from('objets')
+                .select('*')
+                .eq('bien_id', bienId)
+                .order('ordre');
+
+            objetsCopies = objetsTemplate || [];
         }
 
-        const etatDesLieux = {
-            id: Date.now().toString(),
-            type,
-            locataire: locataire || '',
-            etatEntreeId: type === 'sortie' ? etatEntreeId : null,
-            dateCreation: new Date().toISOString(),
-            sections: JSON.parse(JSON.stringify(bien.sections || [])), // Copie des sections
-            objets: objetsCopies
-        };
+        // Créer l'état des lieux
+        const { data: etatDesLieux, error: etatError } = await supabase
+            .from('etats_des_lieux')
+            .insert([{
+                bien_id: bienId,
+                type,
+                locataire: locataire || '',
+                etat_entree_id: type === 'sortie' ? etatEntreeId : null
+            }])
+            .select()
+            .single();
 
-        bien.etatsDesLieux.push(etatDesLieux);
-        await saveData(data);
+        if (etatError) {
+            console.error('Erreur Supabase:', etatError);
+            return res.status(500).json({ error: 'Erreur serveur' });
+        }
 
-        res.json({ etatDesLieux });
+        // Insérer les objets dans objets_etat_des_lieux
+        if (objetsCopies.length > 0) {
+            const objetsToInsert = objetsCopies.map(obj => ({
+                etat_des_lieux_id: etatDesLieux.id,
+                objet_id: type === 'sortie' ? obj.objet_id : obj.id,
+                section_id: type === 'sortie' ? obj.section_id : obj.section_id,
+                nom: obj.nom,
+                description: obj.description || '',
+                entree: type === 'sortie' ? obj.entree : false,
+                sortie: false,
+                note: type === 'sortie' ? obj.note : 0,
+                commentaires: type === 'sortie' ? obj.commentaires : '',
+                ordre: obj.ordre
+            }));
+
+            await supabase
+                .from('objets_etat_des_lieux')
+                .insert(objetsToInsert);
+        }
+
+        // Retourner l'état des lieux complet
+        const { data: objetsEtat } = await supabase
+            .from('objets_etat_des_lieux')
+            .select('*')
+            .eq('etat_des_lieux_id', etatDesLieux.id)
+            .order('ordre');
+
+        res.json({
+            etatDesLieux: {
+                id: etatDesLieux.id,
+                type: etatDesLieux.type,
+                locataire: etatDesLieux.locataire,
+                etatEntreeId: etatDesLieux.etat_entree_id,
+                dateCreation: etatDesLieux.date_creation,
+                objets: objetsEtat || []
+            }
+        });
     } catch (error) {
         console.error('Erreur lors de la création de l\'état des lieux:', error);
         res.status(500).json({ error: 'Erreur serveur' });
@@ -521,20 +723,18 @@ export async function obtenirEtatsDesLieux(req, res) {
     try {
         const { bienId } = req.params;
 
-        const data = await loadData();
-        const bien = data.biens.find(b => b.id === bienId);
+        const { data: etatsDesLieux, error } = await supabase
+            .from('etats_des_lieux')
+            .select('*')
+            .eq('bien_id', bienId)
+            .order('date_creation', { ascending: false });
 
-        if (!bien) {
-            return res.status(404).json({ error: 'Bien non trouvé' });
+        if (error) {
+            console.error('Erreur Supabase:', error);
+            return res.status(500).json({ error: 'Erreur serveur' });
         }
 
-        // Filtrer pour s'assurer que seuls les états de ce bien sont retournés
-        const etatsDesLieux = (bien.etatsDesLieux || []).filter(etat => {
-            // Vérifier que l'état appartient bien à ce bien
-            return etat && etat.id;
-        });
-
-        res.json({ etatsDesLieux });
+        res.json({ etatsDesLieux: etatsDesLieux || [] });
     } catch (error) {
         console.error('Erreur lors de la récupération des états des lieux:', error);
         res.status(500).json({ error: 'Erreur serveur' });
@@ -546,20 +746,42 @@ export async function obtenirEtatDesLieux(req, res) {
     try {
         const { bienId, etatId } = req.params;
 
-        const data = await loadData();
-        const bien = data.biens.find(b => b.id === bienId);
+        const { data: etatDesLieux, error } = await supabase
+            .from('etats_des_lieux')
+            .select('*')
+            .eq('id', etatId)
+            .eq('bien_id', bienId)
+            .single();
 
-        if (!bien) {
-            return res.status(404).json({ error: 'Bien non trouvé' });
-        }
-
-        const etatDesLieux = (bien.etatsDesLieux || []).find(e => e.id === etatId);
-
-        if (!etatDesLieux) {
+        if (error || !etatDesLieux) {
             return res.status(404).json({ error: 'État des lieux non trouvé' });
         }
 
-        res.json({ etatDesLieux });
+        // Récupérer les objets de cet état des lieux
+        const { data: objets } = await supabase
+            .from('objets_etat_des_lieux')
+            .select('*')
+            .eq('etat_des_lieux_id', etatId)
+            .order('ordre');
+
+        // Récupérer les sections du bien pour organiser l'affichage
+        const { data: sections } = await supabase
+            .from('sections')
+            .select('*')
+            .eq('bien_id', bienId)
+            .order('ordre');
+
+        res.json({
+            etatDesLieux: {
+                id: etatDesLieux.id,
+                type: etatDesLieux.type,
+                locataire: etatDesLieux.locataire,
+                etatEntreeId: etatDesLieux.etat_entree_id,
+                dateCreation: etatDesLieux.date_creation,
+                sections: sections || [],
+                objets: objets || []
+            }
+        });
     } catch (error) {
         console.error('Erreur lors de la récupération de l\'état des lieux:', error);
         res.status(500).json({ error: 'Erreur serveur' });
@@ -572,31 +794,25 @@ export async function mettreAJourObjetEtatDesLieux(req, res) {
         const { bienId, etatId, objetId } = req.params;
         const { entree, sortie, note, commentaires } = req.body;
 
-        const data = await loadData();
-        const bien = data.biens.find(b => b.id === bienId);
+        const updates = {};
+        if (entree !== undefined) updates.entree = entree;
+        if (sortie !== undefined) updates.sortie = sortie;
+        if (note !== undefined) updates.note = note;
+        if (commentaires !== undefined) updates.commentaires = commentaires;
 
-        if (!bien) {
-            return res.status(404).json({ error: 'Bien non trouvé' });
-        }
+        const { data: objet, error } = await supabase
+            .from('objets_etat_des_lieux')
+            .update(updates)
+            .eq('id', objetId)
+            .eq('etat_des_lieux_id', etatId)
+            .select()
+            .single();
 
-        const etatDesLieux = (bien.etatsDesLieux || []).find(e => e.id === etatId);
-
-        if (!etatDesLieux) {
-            return res.status(404).json({ error: 'État des lieux non trouvé' });
-        }
-
-        const objet = etatDesLieux.objets.find(o => o.id === objetId);
-
-        if (!objet) {
+        if (error || !objet) {
+            console.error('Erreur Supabase:', error);
             return res.status(404).json({ error: 'Objet non trouvé' });
         }
 
-        if (entree !== undefined) objet.entree = entree;
-        if (sortie !== undefined) objet.sortie = sortie;
-        if (note !== undefined) objet.note = note;
-        if (commentaires !== undefined) objet.commentaires = commentaires;
-
-        await saveData(data);
         res.json({ objet });
     } catch (error) {
         console.error('Erreur lors de la mise à jour:', error);
@@ -609,35 +825,40 @@ export async function supprimerEtatDesLieux(req, res) {
     try {
         const { bienId, etatId } = req.params;
 
-        const data = await loadData();
-        const bien = data.biens.find(b => b.id === bienId);
+        // Récupérer l'état des lieux
+        const { data: etatDesLieux, error: getError } = await supabase
+            .from('etats_des_lieux')
+            .select('*')
+            .eq('id', etatId)
+            .eq('bien_id', bienId)
+            .single();
 
-        if (!bien) {
-            return res.status(404).json({ error: 'Bien non trouvé' });
-        }
-
-        if (!bien.etatsDesLieux) {
+        if (getError || !etatDesLieux) {
             return res.status(404).json({ error: 'État des lieux non trouvé' });
         }
-
-        const index = bien.etatsDesLieux.findIndex(e => e.id === etatId);
-
-        if (index === -1) {
-            return res.status(404).json({ error: 'État des lieux non trouvé' });
-        }
-
-        const etatDesLieux = bien.etatsDesLieux[index];
 
         // Si c'est un état d'entrée, vérifier qu'il n'a pas d'état de sortie lié
         if (etatDesLieux.type === 'entree') {
-            const hasSortie = bien.etatsDesLieux.some(e => e.etatEntreeId === etatId);
-            if (hasSortie) {
+            const { data: etatsLies } = await supabase
+                .from('etats_des_lieux')
+                .select('id')
+                .eq('etat_entree_id', etatId);
+
+            if (etatsLies && etatsLies.length > 0) {
                 return res.status(400).json({ error: 'Impossible de supprimer : un état de sortie est lié à cet état d\'entrée' });
             }
         }
 
-        bien.etatsDesLieux.splice(index, 1);
-        await saveData(data);
+        // Supprimer l'état des lieux (les objets seront supprimés en cascade)
+        const { error } = await supabase
+            .from('etats_des_lieux')
+            .delete()
+            .eq('id', etatId);
+
+        if (error) {
+            console.error('Erreur Supabase:', error);
+            return res.status(500).json({ error: 'Erreur serveur' });
+        }
 
         res.json({ success: true });
     } catch (error) {

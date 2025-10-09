@@ -324,8 +324,10 @@ window.openBienDetail = async (bienId) => {
         etatDetailSection.classList.add('hidden');
         bienDetailSection.classList.remove('hidden');
 
-        // Charger les états réalisés
-        await loadEtatsRealises();
+        // Charger le contrat actif, les documents archivés et les photos
+        await displayContratActif();
+        await displayDocuments();
+        await loadPhotos();
 
         displayEtatTable();
     } catch (error) {
@@ -342,50 +344,158 @@ backBtn.addEventListener('click', () => {
     currentBien = null;
 });
 
-// Charger et afficher les états réalisés
-async function loadEtatsRealises() {
-    try {
-        const response = await fetch(`/api/biens/${currentBienId}/etats-des-lieux`);
-        const data = await response.json();
-
-        // S'assurer que seuls les états du bien actuel sont affichés
-        const etatsFiltered = (data.etatsDesLieux || []).filter(etat => etat && etat.id);
-
-        displayEtatsRealises(etatsFiltered);
-    } catch (error) {
-        console.error('Erreur de chargement des états:', error);
-    }
-}
-
-function displayEtatsRealises(etats) {
-    const container = document.getElementById('etats-realises-container');
+// Afficher le contrat actif
+async function displayContratActif() {
+    const container = document.getElementById('contrat-actif-container');
     container.innerHTML = '';
 
-    if (etats.length === 0) {
-        container.innerHTML = '<p class="empty-state">Aucun état des lieux réalisé.</p>';
-        return;
-    }
+    try {
+        const response = await fetch(`/api/biens/${currentBienId}/contrats`);
+        const data = await response.json();
+        const contrats = data.contrats || [];
 
-    etats.forEach(etat => {
-        const div = document.createElement('div');
-        div.className = 'item-card';
+        const contratActif = contrats.find(c => c.actif);
 
-        const typeLabel = etat.type === 'entree' ? '📥 Entrée' : '📤 Sortie';
-        const date = new Date(etat.dateCreation).toLocaleDateString('fr-FR');
+        if (!contratActif) {
+            container.innerHTML = '<div class="contrat-actif-empty">Aucun contrat en cours</div>';
+            return;
+        }
 
-        div.innerHTML = `
-            <h3>${typeLabel} - ${etat.locataire || 'Sans locataire'}</h3>
-            <p><strong>Date:</strong> ${date}</p>
-            <p><strong>Éléments:</strong> ${etat.objets ? etat.objets.length : 0}</p>
-            <div class="item-actions">
-                <button onclick="openEtatDetail('${etat.id}')" class="btn-primary">Consulter</button>
-                <button onclick="generateEtatPdf('${etat.id}')" class="btn-secondary" title="Générer PDF"><i class="fas fa-file-pdf"></i></button>
-                <button onclick="deleteEtat('${etat.id}')" class="btn-danger" title="Supprimer"><i class="fas fa-trash"></i></button>
+        const dateDebut = contratActif.date_debut ? new Date(contratActif.date_debut).toLocaleDateString('fr-FR') : 'Non définie';
+        const dateFin = contratActif.date_fin ? new Date(contratActif.date_fin).toLocaleDateString('fr-FR') : 'Non définie';
+
+        const card = document.createElement('div');
+        card.className = 'contrat-actif-card';
+        card.innerHTML = `
+            <h4>${contratActif.prenom_locataire} ${contratActif.nom_locataire}</h4>
+            <div class="contrat-actif-info">
+                <div class="contrat-actif-info-item">
+                    <div class="contrat-actif-info-label">Période</div>
+                    <div class="contrat-actif-info-value">${dateDebut} - ${dateFin}</div>
+                </div>
+                <div class="contrat-actif-info-item">
+                    <div class="contrat-actif-info-label">Loyer</div>
+                    <div class="contrat-actif-info-value">${contratActif.loyer ? contratActif.loyer + '€' : 'Non défini'}</div>
+                </div>
+                <div class="contrat-actif-info-item">
+                    <div class="contrat-actif-info-label">Charges</div>
+                    <div class="contrat-actif-info-value">${contratActif.charges ? contratActif.charges + '€' : 'Non définies'}</div>
+                </div>
+                <div class="contrat-actif-info-item">
+                    <div class="contrat-actif-info-label">Dépôt de garantie</div>
+                    <div class="contrat-actif-info-value">${contratActif.depot_garantie ? contratActif.depot_garantie + '€' : 'Non défini'}</div>
+                </div>
+            </div>
+            <div class="contrat-actif-actions">
+                <button onclick="downloadContratPDF('${contratActif.id}')">
+                    <i class="fas fa-download"></i> Télécharger PDF
+                </button>
+                <button onclick="archiverContrat('${contratActif.id}')">
+                    <i class="fas fa-archive"></i> Archiver
+                </button>
             </div>
         `;
-        container.appendChild(div);
-    });
+        container.appendChild(card);
+    } catch (error) {
+        console.error('Erreur lors du chargement du contrat actif:', error);
+        container.innerHTML = '<div class="contrat-actif-empty">Erreur de chargement</div>';
+    }
 }
+
+// Afficher les documents archivés (états des lieux + anciens contrats)
+async function displayDocuments() {
+    const container = document.getElementById('documents-container');
+    container.innerHTML = '';
+
+    try {
+        // Charger les états des lieux
+        const etatsResponse = await fetch(`/api/biens/${currentBienId}/etats-des-lieux`);
+        const etatsData = await etatsResponse.json();
+        const etats = etatsData.etatsDesLieux || [];
+
+        // Charger les contrats
+        const contratsResponse = await fetch(`/api/biens/${currentBienId}/contrats`);
+        const contratsData = await contratsResponse.json();
+        const contrats = contratsData.contrats || [];
+
+        // Ne garder que les contrats archivés (non actifs)
+        const contratsArchives = contrats.filter(c => !c.actif);
+
+        // Afficher message si aucun document
+        if (etats.length === 0 && contratsArchives.length === 0) {
+            container.innerHTML = '<div class="documents-empty">Aucun document archivé</div>';
+            return;
+        }
+
+        // Afficher les états des lieux
+        etats.forEach(etat => {
+            const card = document.createElement('div');
+            card.className = `document-card etat-${etat.type}`;
+            card.onclick = () => openEtatDetail(etat.id);
+
+            const typeIcon = etat.type === 'entree' ? '📥' : '📤';
+            const typeLabel = etat.type === 'entree' ? 'État entrée' : 'État sortie';
+            const date = new Date(etat.dateCreation).toLocaleDateString('fr-FR');
+
+            card.innerHTML = `
+                <div class="document-icon">${typeIcon}</div>
+                <div class="document-title">${typeLabel}</div>
+                <div class="document-subtitle">${etat.locataire || 'Sans locataire'}</div>
+                <div class="document-date">${date}</div>
+                <div class="document-actions">
+                    <button class="btn-icon" onclick="event.stopPropagation(); generateEtatPdf('${etat.id}')" title="PDF">
+                        <i class="fas fa-file-pdf"></i>
+                    </button>
+                    <button class="btn-icon" onclick="event.stopPropagation(); deleteEtat('${etat.id}')" title="Supprimer">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+
+        // Afficher les contrats archivés
+        contratsArchives.forEach(contrat => {
+            const card = document.createElement('div');
+            card.className = 'document-card contrat';
+            card.onclick = () => downloadContratPDF(contrat.id);
+
+            const date = contrat.date_debut ? new Date(contrat.date_debut).toLocaleDateString('fr-FR') : '';
+
+            card.innerHTML = `
+                <div class="document-icon">📄</div>
+                <div class="document-title">Contrat</div>
+                <div class="document-subtitle">${contrat.prenom_locataire} ${contrat.nom_locataire}</div>
+                <div class="document-date">${date}</div>
+                <div class="document-actions">
+                    <button class="btn-icon" onclick="event.stopPropagation(); deleteContrat(${contrat.id})" title="Supprimer">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    } catch (error) {
+        console.error('Erreur lors du chargement des documents:', error);
+        container.innerHTML = '<div class="documents-empty">Erreur de chargement</div>';
+    }
+}
+
+// Changer la vue de l'explorateur
+document.querySelectorAll('.view-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const view = this.dataset.view;
+        const container = document.getElementById('documents-container');
+
+        // Mettre à jour les boutons actifs
+        document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+
+        // Changer la vue
+        container.classList.remove('view-grid', 'view-list');
+        container.classList.add(`view-${view}`);
+    });
+});
 
 // Gestion des sections
 let editingSectionId = null;
@@ -463,7 +573,7 @@ addObjetBtn.addEventListener('click', () => {
 saveObjetBtn.addEventListener('click', async () => {
     const nom = document.getElementById('objet-nom').value.trim();
     const description = document.getElementById('objet-description').value.trim();
-    const sectionId = document.getElementById('objet-section').value || null;
+    let sectionId = document.getElementById('objet-section').value || null;
 
     if (!nom) {
         showMessage('Veuillez entrer un nom d\'élément', 'error');
@@ -472,6 +582,26 @@ saveObjetBtn.addEventListener('click', async () => {
 
     showLoading();
     try {
+        // Si aucune section n'est sélectionnée et qu'il n'y a pas de sections existantes, créer une section par défaut
+        if (!sectionId && (!currentBien.sections || currentBien.sections.length === 0)) {
+            console.log('Création de la section "Chambre" par défaut');
+            const sectionResponse = await fetch(`/api/biens/sections`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ bienId: currentBienId, nom: 'Chambre' })
+            });
+
+            const sectionData = await sectionResponse.json();
+            if (sectionResponse.ok) {
+                sectionId = sectionData.section.id;
+                console.log('Section créée avec ID:', sectionId);
+            } else {
+                console.error('Erreur création section:', sectionData);
+            }
+        } else if (!sectionId) {
+            console.log('Objet créé sans section (sections existantes trouvées)');
+        }
+
         const response = await fetch(`/api/biens/${currentBienId}/objets`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -510,11 +640,24 @@ function displayEtatTable() {
     // Afficher la section "Sans section" uniquement s'il y a des objets sans section
     if (objetsSansSection.length > 0) {
         const sansSection = document.createElement('div');
-        sansSection.className = 'section-container';
+        sansSection.className = 'section-container section-sans-section';
         sansSection.dataset.sectionId = 'null';
+
+        // Créer les boutons pour gérer les objets sans section
+        let actionButtons = '';
+        if (sections.length > 0) {
+            actionButtons = `
+                <div class="section-actions">
+                    <button onclick="assignerTousObjetsASection()" class="btn-icon" title="Assigner à une section"><i class="fas fa-arrow-right"></i></button>
+                </div>
+            `;
+        }
+
         sansSection.innerHTML = `
             <div class="section-header">
-                <h4 class="section-title">Sans section</h4>
+                <h4 class="section-title">📦 Sans section</h4>
+                <small style="color: var(--text-light); font-size: 0.8125rem; margin-left: 8px;">Assignez ces éléments à une section</small>
+                ${actionButtons}
             </div>
         `;
 
@@ -692,6 +835,7 @@ function setupObjetDragAndDrop(row) {
         row.classList.remove('dragging');
         row.draggable = false;
         if (draggedObjet) {
+            console.log('🎯 Drop terminé, sauvegarde...');
             await saveObjetOrderAndSection();
             draggedObjet = null;
         }
@@ -703,20 +847,57 @@ function setupGlobalObjetDragEvents() {
     if (objetDragEventsSetup) return;
 
     const container = document.getElementById('etat-container');
+    let lastTargetSection = null;
 
     container.addEventListener('dragover', (e) => {
         e.preventDefault();
         if (!draggedObjet) return;
 
-        // Trouver le tbody le plus proche (permet le déplacement entre sections)
-        const target = e.target.closest('tbody');
+        // Trouver la section la plus proche en remontant depuis l'élément cible
+        let element = e.target;
+        let sectionContainer = null;
+
+        while (element && element !== container) {
+            if (element.classList && element.classList.contains('section-container')) {
+                sectionContainer = element;
+                break;
+            }
+            element = element.parentElement;
+        }
+
+        if (!sectionContainer) return;
+
+        // Trouver le tbody dans cette section
+        const target = sectionContainer.querySelector('tbody');
         if (!target) return;
+
+        // Ajouter un indicateur visuel sur la section cible
+        if (lastTargetSection !== sectionContainer) {
+            document.querySelectorAll('.section-container').forEach(s => s.classList.remove('drag-target'));
+            sectionContainer.classList.add('drag-target');
+            lastTargetSection = sectionContainer;
+        }
 
         const afterElement = getDragAfterElement(target, e.clientY, 'tr:not(.dragging)');
         if (afterElement == null) {
             target.appendChild(draggedObjet);
         } else {
             target.insertBefore(draggedObjet, afterElement);
+        }
+    });
+
+    container.addEventListener('drop', () => {
+        // Nettoyer les indicateurs visuels après le drop
+        document.querySelectorAll('.section-container').forEach(s => s.classList.remove('drag-target'));
+        lastTargetSection = null;
+    });
+
+    container.addEventListener('dragleave', (e) => {
+        // Ne nettoyer que si on quitte vraiment le container
+        const relatedTarget = e.relatedTarget;
+        if (!relatedTarget || !container.contains(relatedTarget)) {
+            document.querySelectorAll('.section-container').forEach(s => s.classList.remove('drag-target'));
+            lastTargetSection = null;
         }
     });
 
@@ -762,6 +943,8 @@ async function saveObjetOrderAndSection() {
     const container = document.getElementById('etat-container');
     const objets = [];
 
+    console.log('💾 Sauvegarde de l\'ordre et des sections...');
+
     // Parcourir toutes les sections
     container.querySelectorAll('.section-container').forEach(sectionDiv => {
         const sectionId = sectionDiv.dataset.sectionId === 'null' ? null : sectionDiv.dataset.sectionId;
@@ -770,25 +953,37 @@ async function saveObjetOrderAndSection() {
         if (tbody) {
             const rows = [...tbody.querySelectorAll('tr[data-objet-id]')];
             rows.forEach(row => {
-                objets.push({
+                const objetData = {
                     id: row.dataset.objetId,
                     sectionId: sectionId,
                     ordre: objets.length // Ordre global
-                });
+                };
+                console.log('  - Objet:', row.dataset.objetId, 'dans section:', sectionId);
+                objets.push(objetData);
             });
         }
     });
 
+    console.log('📦 Total objets à sauvegarder:', objets.length);
+
     try {
-        await fetch(`/api/biens/${currentBienId}/reorganiser`, {
+        const response = await fetch(`/api/biens/${currentBienId}/reorganiser`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ objets })
         });
 
-        // Recharger pour afficher les changements
-        await openBienDetail(currentBienId);
+        const data = await response.json();
+
+        if (!response.ok) {
+            console.error('❌ Erreur lors de la sauvegarde:', data);
+            showMessage('Erreur lors de la réorganisation', 'error');
+            return;
+        }
+
+        console.log('✅ Sauvegarde réussie ! Les changements ont été enregistrés.');
     } catch (error) {
+        console.error('❌ Erreur:', error);
         showMessage('Erreur lors de la réorganisation', 'error');
     }
 }
@@ -994,34 +1189,38 @@ function displayEtatDetail() {
     const sections = (currentEtat.sections || []).sort((a, b) => (a.ordre || 0) - (b.ordre || 0));
     const objets = (currentEtat.objets || []).sort((a, b) => (a.ordre || 0) - (b.ordre || 0));
 
-    const objetsSansSection = objets.filter(o => !o.sectionId);
+    const objetsSansSection = objets.filter(o => !o.section_id);
 
     if (sections.length === 0 && objets.length === 0) {
         container.innerHTML = '<p class="empty-state">Aucun élément dans cet état des lieux.</p>';
         return;
     }
 
-    // Afficher "Sans section"
-    const sansSection = document.createElement('div');
-    sansSection.className = 'section-container';
-    sansSection.innerHTML = `<h4 class="section-title">Sans section</h4>`;
+    // N'afficher "Sans section" que s'il y a des objets sans section
+    if (objetsSansSection.length > 0) {
+        const sansSection = document.createElement('div');
+        sansSection.className = 'section-container section-sans-section';
+        sansSection.innerHTML = `<h4 class="section-title">Sans section</h4>`;
 
-    const table1 = createEtatObjetTable(objetsSansSection);
-    sansSection.appendChild(table1);
-    container.appendChild(sansSection);
+        const table1 = createEtatObjetTable(objetsSansSection);
+        sansSection.appendChild(table1);
+        container.appendChild(sansSection);
+    }
 
     // Afficher les sections
     sections.forEach(section => {
-        const objetsSection = objets.filter(o => o.sectionId === section.id);
+        const objetsSection = objets.filter(o => o.section_id === section.id);
 
-        const sectionDiv = document.createElement('div');
-        sectionDiv.className = 'section-container';
-        sectionDiv.innerHTML = `<h4 class="section-title">${section.nom}</h4>`;
+        if (objetsSection.length > 0) {
+            const sectionDiv = document.createElement('div');
+            sectionDiv.className = 'section-container';
+            sectionDiv.innerHTML = `<h4 class="section-title">${section.nom}</h4>`;
 
-        const table = createEtatObjetTable(objetsSection);
-        sectionDiv.appendChild(table);
+            const table = createEtatObjetTable(objetsSection);
+            sectionDiv.appendChild(table);
 
-        container.appendChild(sectionDiv);
+            container.appendChild(sectionDiv);
+        }
     });
 }
 
@@ -1164,8 +1363,8 @@ window.deleteEtat = async (etatId) => {
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Erreur de suppression');
 
-        // Recharger la page du bien
-        await loadEtatsRealises();
+        // Recharger les documents
+        await displayDocuments();
         showMessage('État des lieux supprimé');
     } catch (error) {
         showMessage(error.message, 'error');
@@ -1238,3 +1437,558 @@ creerEtatSortieBtn.addEventListener('click', async () => {
         hideLoading();
     }
 });
+
+// ==================== PHOTOS ====================
+let selectedPhotoFile = null;
+
+const addPhotoBtn = document.getElementById('add-photo-btn');
+const photoModal = document.getElementById('photo-modal');
+const photoDropZone = document.getElementById('photo-drop-zone');
+const photoFileInput = document.getElementById('photo-file-input');
+const photoCameraBtn = document.getElementById('photo-camera-btn');
+const photoLegendeInput = document.getElementById('photo-legende');
+const photoPreview = document.getElementById('photo-preview');
+const uploadPhotoBtn = document.getElementById('upload-photo-btn');
+const photosContainer = document.getElementById('photos-container');
+
+// Charger les photos d'un bien
+async function loadPhotos() {
+    if (!currentBienId) return;
+
+    try {
+        const response = await fetch(`/api/biens/${currentBienId}/photos`);
+        const data = await response.json();
+
+        if (!response.ok) throw new Error(data.error);
+
+        photosContainer.innerHTML = '';
+
+        if (data.photos.length === 0) {
+            photosContainer.innerHTML = '<p class="empty-state">Aucune photo ajoutée.</p>';
+            return;
+        }
+
+        data.photos.forEach(photo => {
+            const photoCard = document.createElement('div');
+            photoCard.className = 'photo-card';
+            photoCard.innerHTML = `
+                <img src="${photo.url}" alt="${photo.legende || 'Photo du bien'}">
+                <div class="photo-card-actions">
+                    <button class="btn-icon" onclick="deletePhoto(${photo.id})" title="Supprimer">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+                ${photo.legende ? `<div class="photo-legende">${photo.legende}</div>` : ''}
+            `;
+            photosContainer.appendChild(photoCard);
+        });
+    } catch (error) {
+        console.error('Erreur lors du chargement des photos:', error);
+        showMessage('Erreur lors du chargement des photos', 'error');
+    }
+}
+
+// Ouvrir la modal photo
+addPhotoBtn.addEventListener('click', () => {
+    photoModal.classList.remove('hidden');
+    selectedPhotoFile = null;
+    photoPreview.innerHTML = '';
+    photoLegendeInput.value = '';
+    uploadPhotoBtn.disabled = true;
+});
+
+// Drag & drop zone
+photoDropZone.addEventListener('click', () => {
+    photoFileInput.click();
+});
+
+photoDropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    photoDropZone.style.borderColor = 'var(--primary-color)';
+});
+
+photoDropZone.addEventListener('dragleave', () => {
+    photoDropZone.style.borderColor = 'var(--border-color)';
+});
+
+photoDropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    photoDropZone.style.borderColor = 'var(--border-color)';
+
+    const files = e.dataTransfer.files;
+    if (files.length > 0 && files[0].type.startsWith('image/')) {
+        handlePhotoSelect(files[0]);
+    }
+});
+
+photoFileInput.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+        handlePhotoSelect(e.target.files[0]);
+    }
+});
+
+// Gérer la sélection de photo
+function handlePhotoSelect(file) {
+    selectedPhotoFile = file;
+
+    // Afficher la preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        photoPreview.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
+    };
+    reader.readAsDataURL(file);
+
+    uploadPhotoBtn.disabled = false;
+}
+
+// Prendre une photo avec la caméra
+photoCameraBtn.addEventListener('click', async () => {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+
+        // Créer un élément vidéo pour la caméra
+        photoPreview.innerHTML = `
+            <video id="camera-stream" autoplay style="max-width: 100%; border-radius: 8px;"></video>
+            <button id="capture-photo-btn" class="btn-primary" style="margin-top: 12px;">📸 Capturer</button>
+        `;
+
+        const video = document.getElementById('camera-stream');
+        video.srcObject = stream;
+
+        document.getElementById('capture-photo-btn').addEventListener('click', () => {
+            // Créer un canvas pour capturer l'image
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+
+            // Convertir en blob
+            canvas.toBlob((blob) => {
+                selectedPhotoFile = new File([blob], `photo-${Date.now()}.jpg`, { type: 'image/jpeg' });
+
+                // Afficher la preview
+                photoPreview.innerHTML = `<img src="${canvas.toDataURL()}" alt="Preview">`;
+                uploadPhotoBtn.disabled = false;
+
+                // Arrêter le stream
+                stream.getTracks().forEach(track => track.stop());
+            }, 'image/jpeg');
+        });
+    } catch (error) {
+        console.error('Erreur caméra:', error);
+        showMessage('Impossible d\'accéder à la caméra', 'error');
+    }
+});
+
+// Upload de la photo
+uploadPhotoBtn.addEventListener('click', async () => {
+    if (!selectedPhotoFile) return;
+
+    showLoading();
+    try {
+        // Upload vers Supabase Storage via le serveur
+        const formData = new FormData();
+        formData.append('photo', selectedPhotoFile);
+
+        const uploadResponse = await fetch('/api/upload/photo', {
+            method: 'POST',
+            body: formData
+        });
+
+        const uploadData = await uploadResponse.json();
+        if (!uploadResponse.ok) throw new Error(uploadData.error || 'Erreur lors de l\'upload');
+
+        // Enregistrer dans la base de données
+        const response = await fetch(`/api/biens/${currentBienId}/photos`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                bienId: currentBienId,
+                url: uploadData.url,
+                legende: photoLegendeInput.value
+            })
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error);
+
+        showMessage('Photo ajoutée avec succès !');
+        closeModals();
+        await loadPhotos();
+    } catch (error) {
+        console.error('Erreur:', error);
+        showMessage(error.message || 'Erreur lors de l\'ajout de la photo', 'error');
+    } finally {
+        hideLoading();
+    }
+});
+
+// Supprimer une photo
+window.deletePhoto = async (photoId) => {
+    if (!confirm('Supprimer cette photo ?')) return;
+
+    showLoading();
+    try {
+        const response = await fetch(`/api/photos/${photoId}`, {
+            method: 'DELETE'
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error);
+
+        showMessage('Photo supprimée');
+        await loadPhotos();
+    } catch (error) {
+        console.error('Erreur:', error);
+        showMessage('Erreur lors de la suppression', 'error');
+    } finally {
+        hideLoading();
+    }
+};
+
+// ==================== CONTRATS ====================
+const createContratBtn = document.getElementById('create-contrat-btn');
+const contratModal = document.getElementById('contrat-modal');
+const saveContratBtn = document.getElementById('save-contrat-btn');
+
+// Ouvrir la modal contrat
+createContratBtn.addEventListener('click', () => {
+    contratModal.classList.remove('hidden');
+    document.getElementById('contrat-nom').value = '';
+    document.getElementById('contrat-prenom').value = '';
+    document.getElementById('contrat-adresse-locataire').value = '';
+    document.getElementById('contrat-date-debut').value = '';
+    document.getElementById('contrat-date-fin').value = '';
+    document.getElementById('contrat-loyer').value = '';
+    document.getElementById('contrat-charges').value = '';
+    document.getElementById('contrat-depot').value = '';
+});
+
+// Créer un contrat
+saveContratBtn.addEventListener('click', async () => {
+    const nom = document.getElementById('contrat-nom').value;
+    const prenom = document.getElementById('contrat-prenom').value;
+
+    if (!nom || !prenom) {
+        showMessage('Nom et prénom requis', 'error');
+        return;
+    }
+
+    showLoading();
+    try {
+        const response = await fetch(`/api/biens/${currentBienId}/contrats`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                bienId: currentBienId,
+                type: 'bail',
+                nomLocataire: nom,
+                prenomLocataire: prenom,
+                adresseLocataire: document.getElementById('contrat-adresse-locataire').value,
+                dateDebut: document.getElementById('contrat-date-debut').value,
+                dateFin: document.getElementById('contrat-date-fin').value,
+                loyer: parseFloat(document.getElementById('contrat-loyer').value) || null,
+                charges: parseFloat(document.getElementById('contrat-charges').value) || null,
+                depotGarantie: parseFloat(document.getElementById('contrat-depot').value) || null
+            })
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error);
+
+        showMessage('Contrat créé avec succès !');
+        closeModals();
+        await displayContratActif();
+        await displayDocuments();
+    } catch (error) {
+        console.error('Erreur:', error);
+        showMessage('Erreur lors de la création du contrat', 'error');
+    } finally {
+        hideLoading();
+    }
+});
+
+// Télécharger le PDF d'un contrat (généré côté client avec jsPDF)
+window.downloadContratPDF = async (contratId) => {
+    try {
+        showLoading();
+
+        // Récupérer les données du contrat
+        const response = await fetch(`/api/biens/${currentBienId}/contrats`);
+        const data = await response.json();
+        const contrat = data.contrats.find(c => c.id === contratId);
+
+        if (!contrat) {
+            showMessage('Contrat non trouvé', 'error');
+            return;
+        }
+
+        // Récupérer les infos du bien et propriétaire
+        const bienResponse = await fetch(`/api/biens/${currentBienId}`);
+        const bienData = await bienResponse.json();
+        const bien = bienData.bien;
+        const proprietaire = bienData.bien.proprietaires;
+
+        // Générer le PDF avec jsPDF
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const margin = 20;
+        let y = 20;
+
+        // Titre
+        doc.setFontSize(18);
+        doc.setFont('helvetica', 'bold');
+        doc.text('CONTRAT DE LOCATION TYPE', pageWidth / 2, y, { align: 'center' });
+        y += 10;
+
+        // Sous-titre
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        const sousTitre = '(Soumis au titre Ier bis de la loi du 6 juillet 1989...)';
+        doc.text(sousTitre, pageWidth / 2, y, { align: 'center' });
+        y += 15;
+
+        // I. DÉSIGNATION DES PARTIES
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('I. DÉSIGNATION DES PARTIES', margin, y);
+        y += 8;
+
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Bailleur', margin, y);
+        doc.text('Locataire', pageWidth / 2 + 10, y);
+        y += 6;
+
+        doc.setFont('helvetica', 'normal');
+        doc.text(proprietaire?.nom || 'Non renseigné', margin, y);
+        doc.text(`${contrat.prenom_locataire} ${contrat.nom_locataire}`, pageWidth / 2 + 10, y);
+        y += 5;
+        doc.text(proprietaire?.email || 'Non renseigné', margin, y);
+        doc.text(contrat.adresse_locataire || 'Non renseignée', pageWidth / 2 + 10, y);
+        y += 12;
+
+        // II. OBJET DU CONTRAT
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('II. OBJET DU CONTRAT', margin, y);
+        y += 8;
+
+        doc.setFontSize(10);
+        doc.text('A. Consistance du logement', margin, y);
+        y += 6;
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Désignation : ${bien.nom || 'Non renseigné'}`, margin, y);
+        y += 5;
+        doc.text(`Adresse : ${bien.adresse || 'Non renseignée'}`, margin, y);
+        y += 5;
+        doc.text('Type d\'habitat : Logement individuel', margin, y);
+        y += 5;
+        doc.text('Régime juridique : Location vide', margin, y);
+        y += 10;
+
+        doc.setFont('helvetica', 'bold');
+        doc.text('B. Destination des locaux', margin, y);
+        y += 6;
+        doc.setFont('helvetica', 'normal');
+        doc.text('Usage d\'habitation exclusive (résidence principale du locataire)', margin, y);
+        y += 15;
+
+        // III. DATE DE PRISE D'EFFET ET DURÉE
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('III. DATE DE PRISE D\'EFFET ET DURÉE', margin, y);
+        y += 8;
+
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        const dateDebut = contrat.date_debut ? new Date(contrat.date_debut).toLocaleDateString('fr-FR') : 'Non définie';
+        const dateFin = contrat.date_fin ? new Date(contrat.date_fin).toLocaleDateString('fr-FR') : 'Non définie';
+        doc.text(`Prise d'effet : ${dateDebut}`, margin, y);
+        doc.text(`Fin d'effet : ${dateFin}`, pageWidth / 2 + 10, y);
+        y += 6;
+
+        // Calculer la durée
+        let duree = 'Non définie';
+        if (contrat.date_debut && contrat.date_fin) {
+            const debut = new Date(contrat.date_debut);
+            const fin = new Date(contrat.date_fin);
+            const mois = (fin.getFullYear() - debut.getFullYear()) * 12 + (fin.getMonth() - debut.getMonth());
+            duree = `${mois} mois`;
+        }
+        doc.text(`Durée du contrat : ${duree}`, margin, y);
+        y += 8;
+
+        doc.setFontSize(9);
+        doc.text('Le locataire peut résilier à tout moment avec un préavis d\'un mois.', margin, y);
+        y += 12;
+
+        // IV. CONDITIONS FINANCIÈRES
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('IV. CONDITIONS FINANCIÈRES', margin, y);
+        y += 8;
+
+        doc.setFontSize(10);
+        doc.text('A. Loyer', margin, y);
+        y += 6;
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Montant mensuel : ${contrat.loyer ? contrat.loyer + ' €' : 'Non défini'}`, margin, y);
+        y += 5;
+        if (contrat.charges) {
+            doc.text(`Charges : ${contrat.charges} €`, margin, y);
+            y += 5;
+        }
+        y += 5;
+
+        doc.setFont('helvetica', 'bold');
+        doc.text('B. Modalités de paiement', margin, y);
+        y += 6;
+        doc.setFont('helvetica', 'normal');
+        doc.text('• Méthode : Virement bancaire', margin + 5, y);
+        y += 5;
+        doc.text('• Date de paiement : Le 1er du mois', margin + 5, y);
+        y += 5;
+        doc.text(`• Charges incluses : ${contrat.charges ? 'Oui' : 'Non'}`, margin + 5, y);
+        y += 12;
+
+        // V. TRAVAUX
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('V. TRAVAUX', margin, y);
+        y += 6;
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Le locataire s\'engage à ne pas réaliser de travaux sans accord écrit préalable du bailleur.', margin, y);
+        y += 12;
+
+        // VI. GARANTIES
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('VI. GARANTIES', margin, y);
+        y += 6;
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Dépôt de garantie : ${contrat.depot_garantie ? contrat.depot_garantie + ' €' : 'Non défini'}.`, margin, y);
+        y += 5;
+        doc.setFontSize(9);
+        doc.text('En cas de dégradation, le coût sera déduit du montant restitué.', margin, y);
+        y += 12;
+
+        // Nouvelle page si nécessaire
+        if (y > 250) {
+            doc.addPage();
+            y = 20;
+        }
+
+        // VII. CLAUSE RÉSOLUTOIRE
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('VII. CLAUSE RÉSOLUTOIRE', margin, y);
+        y += 6;
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        const textClause = 'À défaut de paiement à la date convenue, après un commandement de payer resté infructueux 2 mois, le bail peut être résilié de plein droit.';
+        const splitClause = doc.splitTextToSize(textClause, pageWidth - 2 * margin);
+        doc.text(splitClause, margin, y);
+        y += splitClause.length * 5 + 8;
+
+        // X. AUTRES CONDITIONS PARTICULIÈRES
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('X. AUTRES CONDITIONS PARTICULIÈRES', margin, y);
+        y += 6;
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Sous-location interdite. Respect du bon-vivre ensemble. Interdiction de fumer. Pas d\'animaux.', margin, y);
+        y += 5;
+        doc.setFontSize(9);
+        doc.text('Présence d\'un visiteur > 4 jours non signalée : peut déclencher la clause résolutoire.', margin, y);
+        y += 12;
+
+        // XI. ANNEXES
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('XI. ANNEXES', margin, y);
+        y += 6;
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text('• État des lieux d\'entrée', margin + 5, y);
+        y += 5;
+        doc.text('• Inventaire du mobilier (le cas échéant)', margin + 5, y);
+        y += 20;
+
+        // Signatures
+        const aujourdhui = new Date().toLocaleDateString('fr-FR');
+        doc.text(`Fait le ${aujourdhui}`, margin, y);
+        y += 20;
+
+        doc.setFont('helvetica', 'bold');
+        doc.text('Signature du bailleur', margin, y);
+        doc.text('Signature du locataire', pageWidth / 2 + 10, y);
+        y += 15;
+        doc.line(margin, y, margin + 60, y);
+        doc.line(pageWidth / 2 + 10, y, pageWidth / 2 + 70, y);
+
+        // Télécharger le PDF
+        doc.save(`contrat-${contrat.nom_locataire}-${contrat.prenom_locataire}.pdf`);
+
+        hideLoading();
+        showMessage('PDF généré avec succès', 'success');
+
+    } catch (error) {
+        console.error('Erreur lors de la génération du PDF:', error);
+        hideLoading();
+        showMessage('Erreur lors de la génération du PDF', 'error');
+    }
+};
+
+// Archiver un contrat
+window.archiverContrat = async (contratId) => {
+    if (!confirm('Archiver ce contrat ? Il sera déplacé dans les documents archivés.')) return;
+
+    showLoading();
+    try {
+        const response = await fetch(`/api/contrats/${contratId}/archiver`, {
+            method: 'PUT'
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error);
+
+        showMessage('Contrat archivé');
+        await displayContratActif();
+        await displayDocuments();
+    } catch (error) {
+        console.error('Erreur:', error);
+        showMessage('Erreur lors de l\'archivage', 'error');
+    } finally {
+        hideLoading();
+    }
+};
+
+// Supprimer un contrat
+window.deleteContrat = async (contratId) => {
+    if (!confirm('Supprimer ce contrat ?')) return;
+
+    showLoading();
+    try {
+        const response = await fetch(`/api/contrats/${contratId}`, {
+            method: 'DELETE'
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error);
+
+        showMessage('Contrat supprimé');
+        await displayContratActif();
+        await displayDocuments();
+    } catch (error) {
+        console.error('Erreur:', error);
+        showMessage('Erreur lors de la suppression', 'error');
+    } finally {
+        hideLoading();
+    }
+};

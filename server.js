@@ -41,6 +41,9 @@ import {
     supprimerEtatDesLieux
 } from './api/biens.js';
 import { genererPDF, genererPDFEtat } from './api/pdf.js';
+import { obtenirPhotos, uploadPhoto, supprimerPhoto, updatePhotoLegende } from './api/photos.js';
+import { obtenirContrats, creerContrat, archiverContrat, supprimerContrat } from './api/contrats.js';
+import { uploadMiddleware, uploadPhotoToStorage } from './api/upload.js';
 
 // Routes d'authentification
 app.post('/api/auth/register', register);
@@ -77,6 +80,22 @@ app.delete('/api/biens/:bienId/etats-des-lieux/:etatId', supprimerEtatDesLieux);
 // Routes pour générer les PDFs
 app.get('/api/pdf/:bienId', genererPDF);
 app.get('/api/pdf/etat/:etatId', genererPDFEtat);
+
+// Routes pour les photos
+app.get('/api/biens/:bienId/photos', obtenirPhotos);
+app.post('/api/biens/:bienId/photos', uploadPhoto);
+app.delete('/api/photos/:photoId', supprimerPhoto);
+app.put('/api/photos/:photoId/legende', updatePhotoLegende);
+
+// Route pour l'upload de photo vers Supabase Storage
+app.post('/api/upload/photo', uploadMiddleware, uploadPhotoToStorage);
+
+// Routes pour les contrats
+app.get('/api/biens/:bienId/contrats', obtenirContrats);
+app.post('/api/biens/:bienId/contrats', creerContrat);
+// Route PDF supprimée - génération côté client avec jsPDF
+app.put('/api/contrats/:contratId/archiver', archiverContrat);
+app.delete('/api/contrats/:contratId', supprimerContrat);
 
 // Démarrer le serveur
 app.listen(PORT, () => {

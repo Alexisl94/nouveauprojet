@@ -8,12 +8,20 @@
     "start": "node server.js",
     "dev": "node server.js"
   },
-  "keywords": ["etat-des-lieux", "location", "bailleur", "immobilier"],
+  "keywords": [
+    "etat-des-lieux",
+    "location",
+    "bailleur",
+    "immobilier"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@supabase/supabase-js": "^2.74.0",
     "dotenv": "^16.4.7",
     "express": "^4.18.2",
-    "pdfkit": "^0.15.0"
+    "multer": "^2.0.2",
+    "pdfkit": "^0.15.0",
+    "puppeteer": "^24.23.0"
   }
 }

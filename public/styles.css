@@ -343,10 +343,64 @@ body {
     margin-bottom: 12px;
 }
 
+.etat-info-inline {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex: 1;
+}
+
+.etat-type-badge {
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: var(--text-dark);
+}
+
+.etat-locataire {
+    font-weight: 500;
+    font-size: 0.875rem;
+    color: var(--text-dark);
+}
+
+.etat-date {
+    font-size: 0.8125rem;
+    color: var(--text-light);
+}
+
+.etat-count {
+    font-size: 0.8125rem;
+    color: var(--text-light);
+    margin-left: auto;
+}
+
 .item-actions {
     display: flex;
-    gap: 10px;
+    gap: 8px;
     margin-top: 15px;
+}
+
+/* Carte d'état des lieux (affichage horizontal) */
+.etat-card {
+    background: var(--card-bg);
+    padding: 16px 20px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    transition: all 0.15s ease;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+}
+
+.etat-card:hover {
+    border-color: var(--border-hover);
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.etat-card .item-actions {
+    margin-top: 0;
+    align-items: center;
+    flex-shrink: 0;
 }
 
 .empty-state {
@@ -632,6 +686,16 @@ body {
     cursor: move;
 }
 
+.section-container.drag-target {
+    background: var(--hover-bg);
+    border: 2px solid var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.section-container.drag-target .section-header {
+    border-bottom-color: var(--primary-color);
+}
+
 .section-header {
     display: flex;
     align-items: center;
@@ -675,8 +739,13 @@ body {
 }
 
 tr.dragging {
-    opacity: 0.5;
-    background: #f3f4f6;
+    opacity: 0.3;
+    background: var(--primary-color);
+    color: white;
+}
+
+tr.dragging * {
+    color: white !important;
 }
 
 table.etat-table {
@@ -687,22 +756,49 @@ tbody {
     position: relative;
 }
 
-tbody:empty {
-    height: 50px;
-    display: block;
+/* Section vide - indicateur de drop */
+.section-container {
+    position: relative;
 }
 
-tbody:empty::after {
-    content: 'Déposez des éléments ici';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    color: #9ca3af;
-    font-size: 0.9em;
-    font-style: italic;
-    white-space: nowrap;
+table.etat-table {
+    width: 100%;
 }
+
+.section-container tbody {
+    min-height: 80px;
+    display: table-row-group;
+}
+
+.section-container:has(tbody:not(:has(tr))) .etat-table {
+    position: relative;
+    min-height: 35px;
+}
+
+.section-container tbody:not(:has(tr))::after {
+    content: '↓ Glissez des éléments ici';
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 35px;
+    padding: 8px;
+    text-align: center;
+    color: var(--text-light);
+    font-size: 0.75rem;
+    border: 1px dashed var(--border-color);
+    border-radius: 4px;
+    background: var(--hover-bg);
+    white-space: nowrap;
+    margin: 6px;
+}
+
+.drag-target tbody:not(:has(tr))::after {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    background: rgba(37, 99, 235, 0.08);
+    font-weight: 600;
+}
+
 
 .btn-icon {
     background: transparent;
@@ -757,8 +853,8 @@ tbody:empty::after {
     box-shadow: 0 0 0 4px rgba(45, 212, 191, 0.1);
 }
 
-/* États réalisés */
-.etats-realises-section {
+/* Contrat actif */
+.contrat-actif-section {
     background: var(--card-bg);
     padding: 20px;
     border-radius: 8px;
@@ -766,17 +862,288 @@ tbody:empty::after {
     border: 1px solid var(--border-color);
 }
 
-.etats-realises-section h3 {
+.contrat-actif-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 24px;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+}
+
+.contrat-actif-card h4 {
+    font-size: 1.25rem;
+    margin: 0 0 16px 0;
+    font-weight: 600;
+}
+
+.contrat-actif-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.contrat-actif-info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.contrat-actif-info-label {
+    font-size: 0.8125rem;
+    opacity: 0.9;
+}
+
+.contrat-actif-info-value {
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.contrat-actif-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.contrat-actif-actions button {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.15s ease;
+}
+
+.contrat-actif-actions button:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.contrat-actif-empty {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-light);
+    font-size: 0.875rem;
+    background: var(--hover-bg);
+    border-radius: 8px;
+    border: 1px dashed var(--border-color);
+}
+
+/* Archive Documents - Style Windows Explorer */
+.documents-archive-section {
+    background: var(--card-bg);
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 24px;
+    border: 1px solid var(--border-color);
+}
+
+.documents-archive-section h3 {
     color: var(--text-dark);
     margin-bottom: 16px;
     font-weight: 600;
     font-size: 0.9375rem;
 }
 
-#etats-realises-container {
+.documents-explorer {
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.explorer-toolbar {
+    background: var(--hover-bg);
+    border-bottom: 1px solid var(--border-color);
+    padding: 8px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.875rem;
+    color: var(--text-mid);
+}
+
+.breadcrumb i {
+    color: var(--primary-color);
+}
+
+.view-options {
+    display: flex;
+    gap: 4px;
+}
+
+.view-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    padding: 6px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    color: var(--text-mid);
+    transition: all 0.15s ease;
+}
+
+.view-btn:hover {
+    background: white;
+    border-color: var(--border-color);
+}
+
+.view-btn.active {
+    background: white;
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+/* Vue grille */
+.documents-grid {
+    padding: 16px;
+    min-height: 200px;
+}
+
+.documents-grid.view-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+}
+
+.document-card {
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 16px 12px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    position: relative;
+}
+
+.document-card:hover {
+    background: var(--hover-bg);
+    border-color: var(--primary-color);
+}
+
+.document-card.selected {
+    background: rgba(37, 99, 235, 0.1);
+    border-color: var(--primary-color);
+}
+
+.document-icon {
+    font-size: 48px;
+    margin-bottom: 8px;
+}
+
+.document-card.etat-entree .document-icon {
+    color: var(--primary-color);
+}
+
+.document-card.etat-sortie .document-icon {
+    color: var(--success);
+}
+
+.document-card.contrat .document-icon {
+    color: var(--warning);
+}
+
+.document-title {
+    font-weight: 500;
+    font-size: 0.8125rem;
+    color: var(--text-dark);
+    margin-bottom: 2px;
+    word-break: break-word;
+}
+
+.document-subtitle {
+    font-size: 0.75rem;
+    color: var(--text-light);
+}
+
+.document-date {
+    font-size: 0.6875rem;
+    color: var(--text-light);
+    margin-top: 4px;
+}
+
+.document-actions {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    display: flex;
+    gap: 2px;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.document-card:hover .document-actions {
+    opacity: 1;
+}
+
+/* Vue liste */
+.documents-grid.view-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.documents-grid.view-list .document-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    text-align: left;
+    border-radius: 0;
+    border: none;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.documents-grid.view-list .document-card:hover {
+    background: var(--hover-bg);
+}
+
+.documents-grid.view-list .document-icon {
+    font-size: 24px;
+    margin: 0;
+}
+
+.documents-grid.view-list .document-title {
+    flex: 1;
+    margin: 0;
+}
+
+.documents-grid.view-list .document-subtitle,
+.documents-grid.view-list .document-date {
+    margin: 0;
+}
+
+.documents-empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-light);
+    font-size: 0.875rem;
+}
+
+.add-objet-inline {
+    background: var(--hover-bg);
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-bottom: 16px;
+    border: 1px solid var(--border-color);
+}
+
+/* Section sans section (style spécial) */
+.section-sans-section {
+    background: var(--hover-bg);
+    border: 1px dashed var(--border-color) !important;
+}
+
+.section-sans-section .section-header {
+    background: transparent;
 }
 
 /* Info état des lieux */
@@ -797,4 +1164,149 @@ tbody:empty::after {
 .etat-info strong {
     font-weight: 600;
     color: var(--text-dark);
+}
+
+/* Photos Section */
+.photos-section,
+.contrats-section {
+    background: var(--card-bg);
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 24px;
+    border: 1px solid var(--border-color);
+}
+
+.section-header-with-action {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.section-header-with-action h3 {
+    margin: 0;
+    font-size: 0.9375rem;
+    font-weight: 600;
+}
+
+.photos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+}
+
+.photo-card {
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    background: var(--card-bg);
+}
+
+.photo-card img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+}
+
+.photo-card-actions {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    gap: 4px;
+}
+
+.photo-legende {
+    padding: 12px;
+    font-size: 0.875rem;
+    color: var(--text-mid);
+}
+
+.photo-upload-zone {
+    border: 2px dashed var(--border-color);
+    border-radius: 8px;
+    padding: 40px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 16px;
+}
+
+.photo-upload-zone:hover {
+    border-color: var(--primary-color);
+    background: var(--hover-bg);
+}
+
+.photo-upload-zone i {
+    font-size: 48px;
+    color: var(--text-light);
+    margin-bottom: 12px;
+}
+
+#photo-preview {
+    margin: 16px 0;
+}
+
+#photo-preview img {
+    max-width: 100%;
+    border-radius: 8px;
+}
+
+/* Contrats */
+.contrats-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.contrat-card {
+    background: var(--card-bg);
+    padding: 16px 20px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.contrat-info {
+    flex: 1;
+}
+
+.contrat-info h4 {
+    margin: 0 0 8px 0;
+    font-size: 0.9375rem;
+}
+
+.contrat-details {
+    font-size: 0.8125rem;
+    color: var(--text-light);
+}
+
+.modal-large .modal-content {
+    max-width: 700px;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.form-group.full-width {
+    grid-column: 1 / -1;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-dark);
+}
+
+.form-group input {
+    width: 100%;
 }
