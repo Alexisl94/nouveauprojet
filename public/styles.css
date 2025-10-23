@@ -1390,15 +1390,16 @@ table.etat-table {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 16px;
+    padding: 14px 18px;
     background: white;
     border: 1px solid var(--border-color);
-    border-radius: 6px;
-    transition: box-shadow 0.2s;
+    border-radius: 8px;
+    transition: all 0.15s ease;
 }
 
 .collaborateur-item:hover {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    border-color: var(--border-hover);
 }
 
 .collaborateur-info {
@@ -1411,6 +1412,9 @@ table.etat-table {
 .collaborateur-info i {
     font-size: 2rem;
     color: var(--primary-color);
+    background: rgba(37, 99, 235, 0.1);
+    padding: 12px;
+    border-radius: 8px;
 }
 
 .collaborateur-info > div {
@@ -1431,17 +1435,19 @@ table.etat-table {
 
 .badge {
     display: inline-block;
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-size: 0.75rem;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.6875rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    margin-left: 8px;
 }
 
 .badge-administrateur {
-    background: #E8F5E9;
-    color: #2E7D32;
+    background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
+    color: #1B5E20;
+    border: 1px solid #A5D6A7;
 }
 
 .badge-locataire {
@@ -1455,28 +1461,40 @@ table.etat-table {
 }
 
 .btn-danger-small {
-    padding: 6px 12px;
+    padding: 8px 16px;
     font-size: 0.8125rem;
-    background: #ef4444;
-    color: white;
-    border: none;
-    border-radius: 4px;
+    background: white;
+    color: var(--danger);
+    border: 1px solid var(--danger);
+    border-radius: 6px;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: all 0.15s ease;
     display: flex;
     align-items: center;
     gap: 6px;
+    font-weight: 500;
 }
 
 .btn-danger-small:hover {
-    background: #dc2626;
+    background: var(--danger);
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.25);
 }
 
 .empty-state {
     text-align: center;
     color: var(--text-light);
-    padding: 20px;
+    padding: 32px 20px;
     font-size: 0.875rem;
+    background: var(--hover-bg);
+    border-radius: 8px;
+    border: 1px dashed var(--border-color);
+    font-style: italic;
+}
+
+#administrateurs-list .empty-state {
+    margin-bottom: 0;
 }
 
 /* Template État des Lieux - Format tableau compact */
@@ -1655,4 +1673,113 @@ table.etat-table {
 .btn-small {
     padding: 6px 12px;
     font-size: 0.8125rem;
+}
+
+/* Modal Header amélioré */
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 16px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: var(--text-dark);
+    font-weight: 600;
+    font-size: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.modal-header h3 i {
+    color: var(--primary-color);
+}
+
+.modal-close {
+    background: var(--hover-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-mid);
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+    padding: 0;
+    line-height: 1;
+}
+
+.modal-close:hover {
+    background: var(--danger);
+    border-color: var(--danger);
+    color: white;
+    transform: scale(1.05);
+}
+
+.modal-body {
+    padding: 0;
+}
+
+/* Formulaire d'ajout administrateur */
+.admin-add-form {
+    border-top: 1px solid var(--border-color);
+    padding-top: 20px;
+    margin-top: 24px;
+}
+
+.admin-add-form h5 {
+    margin: 0 0 12px 0;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.admin-add-input-group {
+    display: flex;
+    gap: 12px;
+    align-items: stretch;
+}
+
+.admin-add-input-group input {
+    flex: 1;
+    padding: 10px 14px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 0.875rem;
+    transition: all 0.15s ease;
+}
+
+.admin-add-input-group input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.admin-add-input-group .btn-success {
+    padding: 10px 20px;
+    white-space: nowrap;
+    min-width: 120px;
+}
+
+/* Settings Modal - Liste administrateurs */
+#administrateurs-list {
+    margin-bottom: 24px;
+}
+
+.settings-description {
+    color: var(--text-light);
+    font-size: 0.875rem;
+    line-height: 1.5;
+    margin-bottom: 20px;
+    padding: 12px 16px;
+    background: var(--hover-bg);
+    border-radius: 6px;
+    border-left: 3px solid var(--primary-color);
 }

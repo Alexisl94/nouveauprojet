@@ -473,26 +473,27 @@
                 <button class="modal-close" onclick="closeSettingsModal()">&times;</button>
             </div>
             <div class="modal-body">
-                <h4 style="margin-bottom: 16px;">👥 Administrateurs</h4>
-                <p style="color: #64748B; font-size: 0.875rem; margin-bottom: 20px;">
+                <h4 style="margin: 0 0 12px 0; font-size: 1rem; font-weight: 600; color: var(--text-dark);">
+                    <i class="fas fa-users-cog" style="color: var(--primary-color); margin-right: 8px;"></i>
+                    Administrateurs
+                </h4>
+                <p class="settings-description">
                     Les administrateurs ont accès complet à tous vos biens et peuvent gérer l'ensemble de votre patrimoine.
                 </p>
 
                 <!-- Liste des administrateurs -->
-                <div id="administrateurs-list" style="margin-bottom: 24px;">
+                <div id="administrateurs-list">
                     <!-- Sera rempli dynamiquement -->
                 </div>
 
                 <!-- Formulaire d'ajout -->
-                <div style="border-top: 1px solid #E2E8F0; padding-top: 20px;">
-                    <h5 style="margin-bottom: 12px;">Ajouter un administrateur</h5>
-                    <div style="display: flex; gap: 12px;">
+                <div class="admin-add-form">
+                    <h5>Ajouter un administrateur</h5>
+                    <div class="admin-add-input-group">
                         <input
                             type="email"
                             id="admin-email-input"
-                            class="form-control"
                             placeholder="email@exemple.com"
-                            style="flex: 1;"
                         >
                         <button onclick="ajouterAdministrateur()" class="btn-success">
                             <i class="fas fa-user-plus"></i> Ajouter
