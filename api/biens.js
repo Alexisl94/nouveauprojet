@@ -101,12 +101,28 @@ export async function obtenirBiens(req, res) {
             // Récupérer le contrat actif (non archivé)
             const { data: contratActif } = await supabase
                 .from('contrats')
-                .select('nom_locataire, prenom_locataire, loyer_ttc')
+                .select('*')
                 .eq('bien_id', bien.id)
                 .eq('archive', false)
                 .order('date_debut', { ascending: false })
                 .limit(1)
                 .single();
+
+            // Transformation du contrat avec camelCase pour le frontend
+            const contratFormate = contratActif ? {
+                id: contratActif.id,
+                nom: contratActif.nom_locataire,
+                prenom: contratActif.prenom_locataire,
+                email: contratActif.email_locataire,
+                numeroChambre: contratActif.numero_chambre,
+                dateDebut: contratActif.date_debut,
+                dateFin: contratActif.date_fin,
+                loyer: contratActif.loyer,
+                charges: contratActif.charges,
+                depotGarantie: contratActif.depot_garantie,
+                type: contratActif.type,
+                actif: contratActif.actif
+            } : null;
 
             return {
                 id: bien.id,
@@ -117,10 +133,12 @@ export async function obtenirBiens(req, res) {
                 sections: sections || [],
                 objets: objets || [],
                 etatsDesLieux: etatsDesLieux || [],
-                locataireActuel: contratActif ? {
-                    nom: contratActif.nom_locataire,
-                    prenom: contratActif.prenom_locataire,
-                    loyer: contratActif.loyer_ttc
+                contratActif: contratFormate,
+                // Pour compatibilité avec l'ancien code
+                locataireActuel: contratFormate ? {
+                    nom: contratFormate.nom,
+                    prenom: contratFormate.prenom,
+                    loyer: contratFormate.loyer
                 } : null
             };
         }));
