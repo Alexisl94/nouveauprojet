@@ -252,10 +252,18 @@ function displayBiens(biens) {
         const div = document.createElement('div');
         div.className = 'item-card';
 
+        // Formatage du nom du locataire
+        const locataireText = bien.locataireActuel
+            ? `${bien.locataireActuel.prenom} ${bien.locataireActuel.nom}`
+            : '<span style="color: var(--text-lighter); font-style: italic;">Aucun</span>';
+
         div.innerHTML = `
             <h3>${bien.nom}</h3>
-            <p>${bien.adresse || 'Pas d\'adresse renseignée'}</p>
-            <small>${bien.objets ? bien.objets.length : 0} élément(s)</small>
+            <p style="margin-bottom: 8px;">${bien.adresse || 'Pas d\'adresse renseignée'}</p>
+            <div class="bien-meta">
+                <small><i class="fas fa-cube"></i> ${bien.objets ? bien.objets.length : 0} élément(s)</small>
+                <small class="locataire-info"><i class="fas fa-user"></i> Locataire: ${locataireText}</small>
+            </div>
             <div class="item-actions">
                 <button onclick="openBienDetail('${bien.id}')" class="btn-primary">Gérer</button>
                 <button onclick="editBien('${bien.id}', '${bien.nom.replace(/'/g, "\\'")}', '${(bien.adresse || '').replace(/'/g, "\\'")}')" class="btn-secondary" title="Modifier"><i class="fas fa-edit"></i></button>

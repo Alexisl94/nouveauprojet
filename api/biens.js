@@ -75,7 +75,7 @@ export async function obtenirBiens(req, res) {
             return res.status(500).json({ error: 'Erreur serveur' });
         }
 
-        // Pour chaque bien, récupérer ses sections, objets et états des lieux
+        // Pour chaque bien, récupérer ses sections, objets, états des lieux et contrat actif
         const biensComplets = await Promise.all(biens.map(async (bien) => {
             // Récupérer les sections
             const { data: sections } = await supabase
@@ -98,6 +98,16 @@ export async function obtenirBiens(req, res) {
                 .eq('bien_id', bien.id)
                 .order('date_creation', { ascending: false });
 
+            // Récupérer le contrat actif (non archivé)
+            const { data: contratActif } = await supabase
+                .from('contrats')
+                .select('nom_locataire, prenom_locataire')
+                .eq('bien_id', bien.id)
+                .eq('archive', false)
+                .order('date_debut', { ascending: false })
+                .limit(1)
+                .single();
+
             return {
                 id: bien.id,
                 proprietaireId: bien.proprietaire_id,
@@ -106,7 +116,11 @@ export async function obtenirBiens(req, res) {
                 creeLe: bien.cree_le,
                 sections: sections || [],
                 objets: objets || [],
-                etatsDesLieux: etatsDesLieux || []
+                etatsDesLieux: etatsDesLieux || [],
+                locataireActuel: contratActif ? {
+                    nom: contratActif.nom_locataire,
+                    prenom: contratActif.prenom_locataire
+                } : null
             };
         }));
 
