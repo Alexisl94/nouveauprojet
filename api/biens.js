@@ -98,12 +98,12 @@ export async function obtenirBiens(req, res) {
                 .eq('bien_id', bien.id)
                 .order('date_creation', { ascending: false });
 
-            // Récupérer le contrat actif (non archivé)
+            // Récupérer le contrat actif (non archivé et actif)
             const { data: contratActif } = await supabase
                 .from('contrats')
                 .select('*')
                 .eq('bien_id', bien.id)
-                .eq('archive', false)
+                .eq('actif', true)
                 .order('date_debut', { ascending: false })
                 .limit(1)
                 .single();

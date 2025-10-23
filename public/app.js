@@ -278,18 +278,30 @@ function displayBiens(biens) {
 
 // Mettre à jour le dashboard avec les métriques
 function updateDashboard(biens) {
+    console.log('=== updateDashboard appelé ===');
+    console.log('Nombre de biens:', biens.length);
+    console.log('Données des biens:', biens);
+
     const totalBiens = biens.length;
     const biensOccupes = biens.filter(bien => bien.locataireActuel).length;
     const biensDisponibles = totalBiens - biensOccupes;
     const tauxOccupation = totalBiens > 0 ? Math.round((biensOccupes / totalBiens) * 100) : 0;
 
+    console.log('Biens occupés:', biensOccupes);
+    console.log('Biens disponibles:', biensDisponibles);
+    console.log('Taux occupation:', tauxOccupation + '%');
+
     // Calculer le total des loyers
     const totalLoyers = biens.reduce((sum, bien) => {
+        console.log('Bien:', bien.nom, '- Locataire:', bien.locataireActuel);
         if (bien.locataireActuel && bien.locataireActuel.loyer) {
+            console.log('  -> Loyer:', bien.locataireActuel.loyer);
             return sum + parseFloat(bien.locataireActuel.loyer);
         }
         return sum;
     }, 0);
+
+    console.log('Total loyers:', totalLoyers);
 
     // Mettre à jour les éléments du dashboard
     document.getElementById('dashboard-occupied').textContent = biensOccupes;
@@ -316,6 +328,8 @@ function updateDashboard(biens) {
     // Mettre à jour la vue rapide
     document.getElementById('dashboard-total-biens').textContent = totalBiens;
     document.getElementById('dashboard-available').textContent = biensDisponibles;
+
+    console.log('=== updateDashboard terminé ===');
 }
 
 window.editBien = (id, nom, adresse) => {
