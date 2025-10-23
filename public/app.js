@@ -229,13 +229,8 @@ saveBienBtn.addEventListener('click', async () => {
 async function loadBiens() {
     showLoading();
     try {
-        // Utiliser l'utilisateur_id du propriétaire connecté
-        const userId = currentUser.utilisateur_id;
-        if (!userId) {
-            showMessage('Erreur: utilisateur_id manquant. Reconnectez-vous.', 'error');
-            return;
-        }
-        const response = await fetch(`/api/biens-accessibles?userId=${userId}`);
+        // Charger les biens du propriétaire connecté
+        const response = await fetch(`/api/biens?proprietaireId=${currentUser.id}`);
         const data = await response.json();
         displayBiens(data.biens);
     } catch (error) {
