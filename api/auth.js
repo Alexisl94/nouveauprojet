@@ -36,9 +36,28 @@ export async function register(req, res) {
             return res.status(500).json({ error: 'Erreur lors de l\'inscription' });
         }
 
+        // Créer aussi l'utilisateur correspondant dans la table utilisateurs
+        const { data: utilisateur, error: userError } = await supabase
+            .from('utilisateurs')
+            .insert([{
+                email,
+                nom
+            }])
+            .select()
+            .single();
+
+        if (userError) {
+            console.error('Erreur lors de la création de l\'utilisateur:', userError);
+        }
+
         // Ne pas renvoyer le mot de passe
         const { mot_de_passe: _, ...proprietaireSafe } = proprietaire;
-        res.json({ proprietaire: proprietaireSafe });
+        res.json({
+            proprietaire: {
+                ...proprietaireSafe,
+                utilisateur_id: utilisateur?.id
+            }
+        });
     } catch (error) {
         console.error('Erreur lors de l\'inscription:', error);
         res.status(500).json({ error: 'Erreur serveur' });
@@ -65,9 +84,34 @@ export async function login(req, res) {
             return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
         }
 
+        // Récupérer ou créer l'utilisateur correspondant
+        let { data: utilisateur } = await supabase
+            .from('utilisateurs')
+            .select('id')
+            .eq('email', email)
+            .single();
+
+        // Si l'utilisateur n'existe pas, le créer
+        if (!utilisateur) {
+            const { data: newUser } = await supabase
+                .from('utilisateurs')
+                .insert([{
+                    email: proprietaire.email,
+                    nom: proprietaire.nom
+                }])
+                .select()
+                .single();
+            utilisateur = newUser;
+        }
+
         // Ne pas renvoyer le mot de passe
         const { mot_de_passe: _, ...proprietaireSafe } = proprietaire;
-        res.json({ proprietaire: proprietaireSafe });
+        res.json({
+            proprietaire: {
+                ...proprietaireSafe,
+                utilisateur_id: utilisateur?.id
+            }
+        });
     } catch (error) {
         console.error('Erreur lors de la connexion:', error);
         res.status(500).json({ error: 'Erreur serveur' });

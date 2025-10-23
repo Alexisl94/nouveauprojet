@@ -229,8 +229,12 @@ saveBienBtn.addEventListener('click', async () => {
 async function loadBiens() {
     showLoading();
     try {
-        // TODO: Get userId from proper auth system. For now using hardcoded ID.
-        const userId = 'ec55c8f2-c42d-40da-885b-90b1fc691b53';
+        // Utiliser l'utilisateur_id du propriétaire connecté
+        const userId = currentUser.utilisateur_id;
+        if (!userId) {
+            showMessage('Erreur: utilisateur_id manquant. Reconnectez-vous.', 'error');
+            return;
+        }
         const response = await fetch(`/api/biens-accessibles?userId=${userId}`);
         const data = await response.json();
         displayBiens(data.biens);
