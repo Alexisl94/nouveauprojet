@@ -666,6 +666,8 @@ body {
     display: flex;
     gap: 8px;
     margin-top: 12px;
+    position: relative;
+    z-index: 2;
 }
 
 .section-container {
@@ -1134,6 +1136,8 @@ table.etat-table {
     border-radius: 6px;
     margin-bottom: 16px;
     border: 1px solid var(--border-color);
+    position: relative;
+    z-index: 1;
 }
 
 /* Section sans section (style spécial) */
@@ -1309,4 +1313,346 @@ table.etat-table {
 
 .form-group input {
     width: 100%;
+}
+
+/* Modal de confirmation personnalisé */
+.confirm-modal {
+    max-width: 420px;
+    text-align: center;
+}
+
+.confirm-modal-icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 20px;
+    background: rgba(220, 38, 38, 0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.confirm-modal-icon i {
+    font-size: 28px;
+    color: var(--danger);
+}
+
+.confirm-modal h3 {
+    color: var(--text-dark);
+    margin-bottom: 12px;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.confirm-modal p {
+    color: var(--text-mid);
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    margin-bottom: 24px;
+}
+
+.confirm-modal .modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+.confirm-modal .btn-danger,
+.confirm-modal .btn-secondary {
+    min-width: 120px;
+}
+
+/* Section Quittances */
+.quittances-section {
+    background: var(--card-bg);
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 24px;
+    border: 1px solid var(--border-color);
+}
+
+/* Collaborateurs Section */
+.collaborateurs-section {
+    background: var(--card-bg);
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 24px;
+    border: 1px solid var(--border-color);
+}
+
+.collaborateurs-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.collaborateur-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    transition: box-shadow 0.2s;
+}
+
+.collaborateur-item:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.collaborateur-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+}
+
+.collaborateur-info i {
+    font-size: 2rem;
+    color: var(--primary-color);
+}
+
+.collaborateur-info > div {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.collaborateur-info strong {
+    color: var(--text-dark);
+    font-size: 0.9375rem;
+}
+
+.collaborateur-info small {
+    color: var(--text-light);
+    font-size: 0.8125rem;
+}
+
+.badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.badge-administrateur {
+    background: #E8F5E9;
+    color: #2E7D32;
+}
+
+.badge-locataire {
+    background: #E3F2FD;
+    color: #1565C0;
+}
+
+.badge-proprietaire {
+    background: #FFF3E0;
+    color: #E65100;
+}
+
+.btn-danger-small {
+    padding: 6px 12px;
+    font-size: 0.8125rem;
+    background: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-danger-small:hover {
+    background: #dc2626;
+}
+
+.empty-state {
+    text-align: center;
+    color: var(--text-light);
+    padding: 20px;
+    font-size: 0.875rem;
+}
+
+/* Template État des Lieux - Format tableau compact */
+.template-etat-section {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 24px;
+    border: 1px solid var(--border-color);
+}
+
+.template-items-compact {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.template-date-note {
+    margin-bottom: 12px;
+    color: var(--text-light);
+    font-size: 0.8125rem;
+}
+
+.template-date-note i {
+    margin-right: 6px;
+    color: var(--primary-color);
+}
+
+.template-summary-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8125rem;
+    background: white;
+}
+
+.template-summary-table thead th {
+    background: #F8FAFC;
+    color: var(--text-dark);
+    font-weight: 600;
+    padding: 8px 10px;
+    text-align: left;
+    border-bottom: 2px solid #E2E8F0;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.template-summary-table .col-element {
+    width: 40%;
+}
+
+.template-summary-table .col-note {
+    width: 10%;
+    text-align: center;
+}
+
+.template-summary-table .col-comment {
+    width: 50%;
+}
+
+.template-summary-table tbody tr.template-section-row td {
+    background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+    color: var(--primary-color);
+    font-weight: 700;
+    padding: 6px 10px;
+    font-size: 0.8125rem;
+    border-top: 2px solid #BFDBFE;
+    border-bottom: 1px solid #BFDBFE;
+}
+
+.template-summary-table tbody tr.template-item-row {
+    border-bottom: 1px solid #F1F5F9;
+}
+
+.template-summary-table tbody tr.template-item-row:hover {
+    background: #F8FAFC;
+}
+
+.template-summary-table tbody td {
+    padding: 6px 10px;
+    vertical-align: middle;
+}
+
+.template-summary-table .template-item-name {
+    color: var(--text-dark);
+    font-weight: 500;
+}
+
+.template-summary-table .template-item-note {
+    text-align: center;
+    font-weight: 700;
+    font-size: 0.875rem;
+}
+
+.template-summary-table .template-item-note.note-good {
+    color: #059669;
+}
+
+.template-summary-table .template-item-note.note-medium {
+    color: #D97706;
+}
+
+.template-summary-table .template-item-note.note-bad {
+    color: #DC2626;
+}
+
+.template-summary-table .template-item-comment {
+    color: var(--text-mid);
+    font-style: italic;
+    font-size: 0.8125rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 300px;
+}
+
+.template-description {
+    background: var(--hover-bg);
+    padding: 16px;
+    border-radius: 6px;
+    border-left: 3px solid var(--primary-color);
+    color: var(--text-mid);
+    margin-bottom: 24px;
+    font-size: 0.9375rem;
+}
+
+.quittances-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.quittance-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    background: var(--hover-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    transition: all 0.15s ease;
+}
+
+.quittance-item:hover {
+    border-color: var(--border-hover);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.quittance-info {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+}
+
+.quittance-date {
+    font-weight: 600;
+    color: var(--text-dark);
+    min-width: 120px;
+}
+
+.quittance-locataire {
+    color: var(--text-mid);
+    min-width: 150px;
+}
+
+.quittance-montant {
+    font-weight: 600;
+    color: var(--primary-color);
+    min-width: 100px;
+}
+
+.quittance-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-small {
+    padding: 6px 12px;
+    font-size: 0.8125rem;
 }

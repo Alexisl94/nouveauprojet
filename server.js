@@ -37,13 +37,16 @@ import {
     creerEtatDesLieux,
     obtenirEtatsDesLieux,
     obtenirEtatDesLieux,
+    terminerEtatDesLieux,
     mettreAJourObjetEtatDesLieux,
     supprimerEtatDesLieux
 } from './api/biens.js';
 import { genererPDF, genererPDFEtat } from './api/pdf.js';
 import { obtenirPhotos, uploadPhoto, supprimerPhoto, updatePhotoLegende } from './api/photos.js';
-import { obtenirContrats, creerContrat, archiverContrat, supprimerContrat } from './api/contrats.js';
+import { obtenirContrats, creerContrat, archiverContrat, supprimerContrat, genererContratPDF } from './api/contrats.js';
+import { obtenirQuittances, creerQuittance, supprimerQuittance, obtenirQuittance, envoyerQuittanceEmail } from './api/quittances.js';
 import { uploadMiddleware, uploadPhotoToStorage } from './api/upload.js';
+import { obtenirAdministrateurs, ajouterAdministrateur, revoquerAdministrateur, obtenirBiensAccessibles } from './api/administrateurs.js';
 
 // Routes d'authentification
 app.post('/api/auth/register', register);
@@ -74,12 +77,13 @@ app.put('/api/biens/:bienId/reorganiser', reorganiser);
 app.post('/api/etats-des-lieux', creerEtatDesLieux);
 app.get('/api/biens/:bienId/etats-des-lieux', obtenirEtatsDesLieux);
 app.get('/api/biens/:bienId/etats-des-lieux/:etatId', obtenirEtatDesLieux);
+app.put('/api/biens/:bienId/etats-des-lieux/:etatId/terminer', terminerEtatDesLieux);
 app.put('/api/biens/:bienId/etats-des-lieux/:etatId/objets/:objetId', mettreAJourObjetEtatDesLieux);
 app.delete('/api/biens/:bienId/etats-des-lieux/:etatId', supprimerEtatDesLieux);
 
 // Routes pour générer les PDFs
 app.get('/api/pdf/:bienId', genererPDF);
-app.get('/api/pdf/etat/:etatId', genererPDFEtat);
+app.get('/api/biens/:bienId/etats-des-lieux/:etatId/pdf', genererPDFEtat);
 
 // Routes pour les photos
 app.get('/api/biens/:bienId/photos', obtenirPhotos);
@@ -93,9 +97,22 @@ app.post('/api/upload/photo', uploadMiddleware, uploadPhotoToStorage);
 // Routes pour les contrats
 app.get('/api/biens/:bienId/contrats', obtenirContrats);
 app.post('/api/biens/:bienId/contrats', creerContrat);
-// Route PDF supprimée - génération côté client avec jsPDF
+app.get('/api/contrats/:contratId/pdf', genererContratPDF);
 app.put('/api/contrats/:contratId/archiver', archiverContrat);
 app.delete('/api/contrats/:contratId', supprimerContrat);
+
+// Routes pour les quittances
+app.get('/api/biens/:bienId/quittances', obtenirQuittances);
+app.post('/api/biens/:bienId/quittances', creerQuittance);
+app.get('/api/quittances/:quittanceId', obtenirQuittance);
+app.delete('/api/quittances/:quittanceId', supprimerQuittance);
+app.post('/api/quittances/:quittanceId/send', envoyerQuittanceEmail);
+
+// Routes pour les administrateurs globaux
+app.get('/api/biens-accessibles', obtenirBiensAccessibles);
+app.get('/api/proprietaires/:proprietaireId/administrateurs', obtenirAdministrateurs);
+app.post('/api/proprietaires/:proprietaireId/administrateurs', ajouterAdministrateur);
+app.delete('/api/administrateurs/:adminId', revoquerAdministrateur);
 
 // Démarrer le serveur
 app.listen(PORT, () => {

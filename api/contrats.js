@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase.js';
+import puppeteer from 'puppeteer';
 
 // Récupérer tous les contrats d'un bien
 export async function obtenirContrats(req, res) {
@@ -31,7 +32,8 @@ export async function creerContrat(req, res) {
             type,
             nomLocataire,
             prenomLocataire,
-            adresseLocataire,
+            emailLocataire,
+            numeroChambre,
             dateDebut,
             dateFin,
             loyer,
@@ -69,7 +71,8 @@ export async function creerContrat(req, res) {
                 type,
                 nom_locataire: nomLocataire,
                 prenom_locataire: prenomLocataire,
-                adresse_locataire: adresseLocataire,
+                email_locataire: emailLocataire,
+                numero_chambre: numeroChambre,
                 date_debut: dateDebut,
                 date_fin: dateFin,
                 loyer,
@@ -114,113 +117,197 @@ function genererHTMLContrat(contrat, proprietaire, bien) {
   <meta charset="utf-8" />
   <title>Contrat de location</title>
   <style>
-    :root { --fs: 11pt; }
-    html, body { margin:0; padding:0; font-family: system-ui, -apple-system, sans-serif; font-size: var(--fs); line-height: 1.35; }
+    /* ——— Mise en page A4 ——— */
     @page { size: A4; margin: 18mm 18mm 20mm 18mm; }
-    h1, h2 { margin: 0 0 8px; }
-    h1 { font-size: 16pt; text-transform: uppercase; text-align:center; margin-bottom: 10px; }
-    h2 { font-size: 12.5pt; margin-top: 14px; }
-    .small { font-size: 9.5pt; color:#444; }
-    .block { margin-bottom: 10px; }
-    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .field { margin: 2px 0; }
-    .label { font-weight: 600; }
-    .signature-box { height: 60px; border-top: 1px solid #000; margin-top: 28px; }
+    html, body {
+      margin: 0; padding: 0;
+      font-family: "Times New Roman", Times, serif;
+      font-size: 11pt; line-height: 1.35; color: #000;
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+
+    /* ——— Titres ——— */
+    h1, h2 { margin: 0 0 8pt 0; font-weight: bold; }
+    h1 { font-size: 16pt; text-transform: uppercase; text-align: center; margin-bottom: 10pt; }
+    h2 { font-size: 12.5pt; margin-top: 14pt; }
+
+    /* ——— Paragraphes & listes ——— */
+    p { margin: 0 0 8pt 0; }
+    ul { margin: 6pt 0 6pt 18pt; }
+    .small { font-size: 10pt; color: #111; }
+
+    /* ——— Blocs & utilitaires ——— */
+    .block { margin-bottom: 10pt; }
+    .label { font-weight: bold; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12pt; }
+    .field { margin: 2pt 0; }
     .page-break { page-break-after: always; }
-    ul { margin: 6px 0 6px 18px; }
+    .signature-box { height: 60px; border-top: 1px solid #000; margin-top: 24pt; }
+    .spacer-lg { margin-top: 20pt; }
   </style>
 </head>
 <body>
 
-  <h1>CONTRAT DE LOCATION TYPE</h1>
+  <h1>CONTRAT DE LOCATION</h1>
+
   <p class="small">
-    (Soumis au titre Ier bis de la loi du 6 juillet 1989…). Rappel : ce contrat contient les clauses essentielles et s'applique sous réserve des dispositions d'ordre public et de la notice d'information jointe.
+    (Soumis au titre Ier bis de la loi du 6 juillet 1989 tendant à améliorer les rapports locatifs et portant
+    modification de la loi n° 86-1290 du 23 décembre 1986)
   </p>
 
-  <h2>I. DÉSIGNATION DES PARTIES</h2>
-  <div class="grid-2">
-    <div class="block">
-      <div class="label">Bailleur</div>
-      <div class="field">${proprietaire.nom || 'Non renseigné'}</div>
-      <div class="field">${proprietaire.email || 'Non renseigné'}</div>
-    </div>
-    <div class="block">
-      <div class="label">Locataire</div>
-      <div class="field">Nom : ${contrat.nom_locataire}</div>
-      <div class="field">Prénom : ${contrat.prenom_locataire}</div>
-      <div class="field">Adresse : ${contrat.adresse_locataire || 'Non renseignée'}</div>
-    </div>
+  <p class="small">
+    <strong>Modalités d'application du contrat :</strong> Le régime de droit commun en matière de baux d'habitation est défini principalement
+    par la loi n° 89-462 du 6 juillet 1989 tendant à améliorer les rapports locatifs et portant modification de la loi n° 86-1290 du 23 décembre 1986.
+    L'ensemble de ces dispositions étant d'ordre public, elles s'imposent aux parties qui, en principe, ne peuvent pas y renoncer.
+  </p>
+
+  <p class="small">
+    En conséquence :
+    <br>- le présent contrat de location contient uniquement les clauses essentielles du contrat dont la législation et la réglementation en vigueur
+    au jour de sa publication imposent la mention par les parties dans le contrat. Il appartient cependant aux parties de s'assurer des dispositions
+    applicables au jour de la conclusion du contrat.
+    <br>- au-delà de ces clauses, les parties sont également soumises à l'ensemble des dispositions légales et réglementaires d'ordre public applicables aux baux d'habitation
+    sans qu'il soit nécessaire de les faire figurer dans le contrat et qui sont rappelées utilement dans la notice d'information qui doit être jointe à chaque contrat.
+    <br>- les parties sont libres de prévoir dans le contrat d'autres clauses particulières, propres à chaque location, dans la mesure où celles-ci sont conformes aux dispositions législatives
+    et réglementaires en vigueur. Les parties peuvent également convenir de l'utilisation de tout autre support pour établir leur contrat, dans le respect du présent contrat type.
+  </p>
+
+  <h2>DÉSIGNATION DES PARTIES</h2>
+
+  <p><strong>Le présent contrat est conclu entre les soussignés :</strong></p>
+
+  <div class="block">
+    <p><strong>SARL ALCAYAMA,</strong></p>
+    <p>38 rue du moulin bâtard, 44490, Le Croisic,</p>
+    <p>personne morale inscrite au RCS au numéro 892 739 764</p>
+    <p>Mail : alcamaya.contact@gmail.com</p>
+    <p>désigné(s) ci-après «&nbsp;le bailleur&nbsp;».</p>
   </div>
 
-  <h2>II. OBJET DU CONTRAT</h2>
   <div class="block">
-    <div class="label">A. Consistance du logement</div>
-    <div class="field">Désignation : ${bien.nom || 'Non renseigné'}</div>
-    <div class="field">Adresse : ${bien.adresse || 'Non renseignée'}</div>
-    <div class="field">Type d'habitat : Logement individuel</div>
-    <div class="field">Régime juridique : Location vide</div>
+    <p>Nom : ${contrat.nom_locataire || 'Non renseigné'}</p>
+    <p>Prénom : ${contrat.prenom_locataire || 'Non renseigné'}</p>
+    <p>Mail : ${contrat.email_locataire || 'Non renseigné'}</p>
+    <p>désigné(s) ci-après «&nbsp;le locataire&nbsp;».</p>
   </div>
+
+  <p>Il a été convenu ce qui suit :</p>
+
+  <h2>II. OBJET DU CONTRAT</h2>
+
+  <p>Le présent contrat a pour objet la location d'un logement ainsi déterminé :</p>
+
   <div class="block">
-    <div class="label">B. Destination des locaux</div>
-    <div class="field">Usage d'habitation exclusive (résidence principale du locataire)</div>
+    <p class="label">A. Consistance du logement</p>
+    <ul>
+      <li>localisation du logement : 11 rue Marcel Deplantay, ${contrat.numero_chambre || 'Non renseigné'}</li>
+      <li>type d'habitat : Immeuble collectif</li>
+      <li>régime juridique de l'immeuble : Mono-propriété</li>
+      <li>période de construction : avant 1949</li>
+      <li>surface habitable : 180 m2</li>
+      <li>nombre de pièces principales : 1</li>
+      <li>le cas échéant, autres parties du logement : une cuisine partagée, salon, WC, salle de bain, jardin</li>
+      <li>le cas échéant, Éléments d'équipements du logement : salon équipé, cuisine équipée, salle de bain équipée, jardin équipé</li>
+      <li>modalité de production chauffage : électrique collectif</li>
+      <li>modalité de production d'eau chaude sanitaire : électrique collectif</li>
+    </ul>
+  </div>
+
+  <div class="block">
+    <p class="label">B. Destination des locaux :</p>
+    <p>Usage d'habitation.</p>
   </div>
 
   <div class="page-break"></div>
 
-  <h2>III. DATE DE PRISE D'EFFET ET DURÉE</h2>
-  <div class="grid-2">
-    <div class="field">Prise d'effet : ${dateDebut}</div>
-    <div class="field">Fin d'effet : ${dateFin}</div>
-  </div>
-  <div class="field">Durée du contrat : ${duree}</div>
-  <p class="small">Le locataire peut résilier à tout moment avec un préavis d'un mois.</p>
+  <h2>III. DATE DE PRISE D'EFFET ET DURÉE DU CONTRAT</h2>
+
+  <p>La durée du contrat et sa date de prise d'effet sont ainsi définies :</p>
+  <ul>
+    <li>A. Date de prise d'effet du contrat : ${dateDebut}</li>
+    <li>B. Date de fin d'effet du contrat : ${dateFin}</li>
+    <li>C. Durée du contrat : ${duree}</li>
+  </ul>
+
+  <p>Le locataire peut mettre fin au bail à tout moment, après avoir donné un préavis d'un mois.</p>
 
   <h2>IV. CONDITIONS FINANCIÈRES</h2>
+
   <div class="block">
-    <div class="label">A. Loyer</div>
-    <div class="field">Montant mensuel : ${contrat.loyer ? contrat.loyer + ' €' : 'Non défini'}</div>
-    ${contrat.charges ? `<div class="field">Charges : ${contrat.charges} €</div>` : ''}
-  </div>
-  <div class="block">
-    <div class="label">B. Modalités de paiement</div>
+    <p class="label">Les parties conviennent des conditions financières suivantes :</p>
+
+    <p class="label">A. Loyer</p>
+    <p><em>Fixation du loyer initial :</em></p>
+    <p>Montant du loyer mensuel : ${contrat.loyer ? contrat.loyer + ' €' : 'Non défini'} toutes charges incluses.</p>
+
+    <p class="label spacer-lg">B. Modalités de paiement</p>
     <ul>
-      <li>Méthode : Virement bancaire</li>
-      <li>Date de paiement : Le 1er du mois</li>
-      <li>Charges incluses : ${contrat.charges ? 'Oui' : 'Non'}</li>
+      <li>méthode de paiement : transfert bancaire</li>
+      <li>date de paiement : le locataire s'engage à réaliser des transferts du montant du loyer avant le 5 de chaque mois</li>
+      <li>les charges incluent comprennent l'électricité, l'eau ainsi que l'ensemble des charges de propriété.<br>
+          Les charges comprises au contrat n'incluent pas la consommation liée au chargement de véhicules électriques (voiture, trottinette, vélo, etc.),
+          laquelle pourra faire l'objet d'une facturation supplémentaire.</li>
     </ul>
   </div>
 
   <h2>V. TRAVAUX</h2>
-  <p>Le locataire s'engage à ne pas réaliser de travaux sans accord écrit préalable du bailleur.</p>
+  <p>Le locataire s'engage à ne pas réaliser de travaux de tout ordre dans le logement sans l'accord préalable du bailleur.</p>
 
   <h2>VI. GARANTIES</h2>
-  <p>Dépôt de garantie : ${contrat.depot_garantie ? contrat.depot_garantie + ' €' : 'Non défini'}.</p>
-  <p class="small">En cas de dégradation, le coût sera déduit du montant restitué.</p>
+  <p>
+    Le locataire dépose un chèque de caution ou effectue un virement bancaire d'une valeur égale à un mois de loyer
+    ( ${contrat.depot_garantie ? contrat.depot_garantie + ' €' : contrat.loyer + ' €'} ), qui sera encaissé puis rendu par le bailleur au terme du présent contrat.
+  </p>
+  <p>En cas de dégradation de l'immeuble, ou de meubles composant le logement, la valeur des dommages sera soustraite au montant rendu.</p>
 
   <h2>VII. CLAUSE RÉSOLUTOIRE</h2>
-  <p>À défaut de paiement à la date convenue, après un commandement de payer resté infructueux 2 mois, le bail peut être résilié de plein droit.</p>
+  <p>
+    Il est expressément convenu qu'à défaut de paiement du dépôt de garantie, d'un seul terme de loyer ou des charges à leur échéance et deux mois après un
+    commandement de payer demeuré infructueux, le bail sera résilié de plein droit si bon semble au bailleur.
+  </p>
 
   <h2>X. AUTRES CONDITIONS PARTICULIÈRES</h2>
-  <p>Sous-location interdite. Respect du bon-vivre ensemble. Interdiction de fumer. Pas d'animaux.</p>
-  <p class="small">Présence d'un visiteur > 4 jours non signalée : peut déclencher la clause résolutoire.</p>
+
+  <p class="label">A. Condition(s) relative(s) à la sous-location</p>
+  <p>
+    Le logement en question ne pourra pas être sous-loué ou cédé à un tiers, le présent contrat s'applique uniquement entre les parties précédemment concernées.
+  </p>
+
+  <p class="label spacer-lg">B. Autres conditions particulières</p>
+  <p>
+    Le locataire est tenu de respecter les règles du bon-vivre ensemble, de respect mutuel avec les locataires résidant dans les logements voisins,
+    que ce soit dans l'usage des parties privées (nuisances sonores), ou communes.
+  </p>
+  <p>Il est strictement interdit de fumer à l'intérieur du logement et des parties communes intérieures.</p>
+  <p>Le locataire est tenu de ne pas ramener d'animaux dans le logement.</p>
+  <p>
+    Le locataire est tenu de souscrire et de maintenir pendant toute la durée du bail une assurance couvrant les risques locatifs
+    (incendie, dégâts des eaux, explosion, etc.) et d'en justifier au bailleur chaque année sur demande.
+  </p>
+  <p>
+    Le locataire s'engage à respecter les règles ci-dessus en cas de visite d'une personne tierce au contrat.
+    Le logement vise à la location d'une personne seule. La présence d'un visiteur pour une durée supérieure à 4 jours, sans en avoir informé au préalable le bailleur,
+    pourrait être considérée comme élément déclencheur de la clause résolutoire.
+  </p>
 
   <h2>XI. ANNEXES</h2>
+  <p><strong>Sont annexées et jointes au contrat de location les pièces suivantes :</strong></p>
   <ul>
-    <li>État des lieux d'entrée</li>
-    <li>Inventaire du mobilier (le cas échéant)</li>
+    <li>Un état des lieux, un inventaire et un état détaillé du mobilier</li>
   </ul>
 
-  <div class="block" style="margin-top:22mm">
-    <div>Fait le ${aujourdhui}</div>
-    <div class="grid-2" style="gap:40px; margin-top:18mm;">
-      <div>
-        <div class="label">Signature du bailleur</div>
-        <div class="signature-box"></div>
-      </div>
-      <div>
-        <div class="label">Signature du locataire</div>
-        <div class="signature-box"></div>
-      </div>
+  <div class="spacer-lg"></div>
+
+  <p>Le ${aujourdhui}, à REDON</p>
+
+  <div class="grid-2" style="gap:40px; margin-top:18pt;">
+    <div>
+      <div class="label">Signature du bailleur</div>
+      <div class="signature-box"></div>
+    </div>
+    <div>
+      <div class="label">Signature du locataire</div>
+      <div class="signature-box"></div>
     </div>
   </div>
 

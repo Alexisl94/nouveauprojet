@@ -16,6 +16,7 @@ const biensSection = document.getElementById('biens-section');
 const bienDetailSection = document.getElementById('bien-detail-section');
 const etatsListSection = document.getElementById('etats-list-section');
 const etatDetailSection = document.getElementById('etat-detail-section');
+const templateEditSection = document.getElementById('template-edit-section');
 const messageDiv = document.getElementById('message');
 const loadingDiv = document.getElementById('loading');
 
@@ -37,7 +38,7 @@ const updateBienBtn = document.getElementById('update-bien-btn');
 const backBtn = document.getElementById('back-btn');
 const addObjetBtn = document.getElementById('add-objet-btn');
 const addSectionBtn = document.getElementById('add-section-btn');
-const generatePdfBtn = document.getElementById('generate-pdf-btn');
+// const generatePdfBtn = document.getElementById('generate-pdf-btn'); // Bouton supprimé
 const etatContainer = document.getElementById('etat-container');
 const sectionModal = document.getElementById('section-modal');
 const saveSectionBtn = document.getElementById('save-section-btn');
@@ -79,6 +80,43 @@ function closeModals() {
 document.querySelectorAll('.close-modal').forEach(btn => {
     btn.addEventListener('click', closeModals);
 });
+
+// Fonction utilitaire pour afficher un modal de confirmation personnalisé
+function showConfirmModal(title, message, confirmText = 'Supprimer', confirmClass = 'btn-danger') {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('confirm-delete-modal');
+        const titleElement = document.getElementById('confirm-modal-title');
+        const messageElement = document.getElementById('confirm-modal-message');
+        const confirmBtn = document.getElementById('confirm-delete-btn');
+        const cancelBtn = document.getElementById('cancel-delete-btn');
+
+        titleElement.textContent = title;
+        messageElement.textContent = message;
+        confirmBtn.textContent = confirmText;
+
+        // Changer la classe du bouton selon le contexte
+        confirmBtn.className = confirmClass;
+
+        modal.classList.remove('hidden');
+
+        const handleConfirm = () => {
+            modal.classList.add('hidden');
+            confirmBtn.removeEventListener('click', handleConfirm);
+            cancelBtn.removeEventListener('click', handleCancel);
+            resolve(true);
+        };
+
+        const handleCancel = () => {
+            modal.classList.add('hidden');
+            confirmBtn.removeEventListener('click', handleConfirm);
+            cancelBtn.removeEventListener('click', handleCancel);
+            resolve(false);
+        };
+
+        confirmBtn.addEventListener('click', handleConfirm);
+        cancelBtn.addEventListener('click', handleCancel);
+    });
+}
 
 // Authentification
 loginForm.addEventListener('submit', async (e) => {
@@ -191,7 +229,9 @@ saveBienBtn.addEventListener('click', async () => {
 async function loadBiens() {
     showLoading();
     try {
-        const response = await fetch(`/api/biens?proprietaireId=${currentUser.id}`);
+        // TODO: Get userId from proper auth system. For now using hardcoded ID.
+        const userId = 'ec55c8f2-c42d-40da-885b-90b1fc691b53';
+        const response = await fetch(`/api/biens-accessibles?userId=${userId}`);
         const data = await response.json();
         displayBiens(data.biens);
     } catch (error) {
@@ -212,6 +252,7 @@ function displayBiens(biens) {
     biens.forEach(bien => {
         const div = document.createElement('div');
         div.className = 'item-card';
+
         div.innerHTML = `
             <h3>${bien.nom}</h3>
             <p>${bien.adresse || 'Pas d\'adresse renseignée'}</p>
@@ -265,7 +306,12 @@ updateBienBtn.addEventListener('click', async () => {
 });
 
 window.duplicateBien = async (id) => {
-    if (!confirm('Dupliquer ce bien avec tous ses éléments ?')) return;
+    const confirmed = await showConfirmModal(
+        'Dupliquer ce bien ?',
+        'Une copie complète de ce bien sera créée avec tous ses éléments (sections et objets).'
+    );
+
+    if (!confirmed) return;
 
     showLoading();
     try {
@@ -287,7 +333,12 @@ window.duplicateBien = async (id) => {
 };
 
 window.deleteBien = async (id) => {
-    if (!confirm('Supprimer ce bien et tous ses éléments ?')) return;
+    const confirmed = await showConfirmModal(
+        'Supprimer ce bien ?',
+        'Cette action est irréversible. Le bien et tous ses éléments (sections, objets, états des lieux, contrats, photos) seront définitivement supprimés.'
+    );
+
+    if (!confirmed) return;
 
     showLoading();
     try {
@@ -322,14 +373,16 @@ window.openBienDetail = async (bienId) => {
         biensSection.classList.add('hidden');
         etatsListSection.classList.add('hidden');
         etatDetailSection.classList.add('hidden');
+        templateEditSection.classList.add('hidden');
         bienDetailSection.classList.remove('hidden');
 
         // Charger le contrat actif, les documents archivés et les photos
         await displayContratActif();
         await displayDocuments();
         await loadPhotos();
+        await loadQuittances();
 
-        displayEtatTable();
+        await updateTemplateSummary();
     } catch (error) {
         showMessage('Erreur de chargement', 'error');
     } finally {
@@ -411,7 +464,7 @@ async function displayDocuments() {
         // Charger les états des lieux
         const etatsResponse = await fetch(`/api/biens/${currentBienId}/etats-des-lieux`);
         const etatsData = await etatsResponse.json();
-        const etats = etatsData.etatsDesLieux || [];
+        const etats = etatsData.etats || [];
 
         // Charger les contrats
         const contratsResponse = await fetch(`/api/biens/${currentBienId}/contrats`);
@@ -443,7 +496,7 @@ async function displayDocuments() {
                 <div class="document-subtitle">${etat.locataire || 'Sans locataire'}</div>
                 <div class="document-date">${date}</div>
                 <div class="document-actions">
-                    <button class="btn-icon" onclick="event.stopPropagation(); generateEtatPdf('${etat.id}')" title="PDF">
+                    <button class="btn-icon" onclick="event.stopPropagation(); generateEtatPdf('${currentBienId}', '${etat.id}')" title="PDF">
                         <i class="fas fa-file-pdf"></i>
                     </button>
                     <button class="btn-icon" onclick="event.stopPropagation(); deleteEtat('${etat.id}')" title="Supprimer">
@@ -501,6 +554,12 @@ document.querySelectorAll('.view-btn').forEach(btn => {
 let editingSectionId = null;
 
 addSectionBtn.addEventListener('click', () => {
+    console.log('🔵 Clic sur "Ajouter une section"');
+    if (!currentBienId) {
+        console.error('❌ Aucun bien sélectionné');
+        showMessage('Erreur : aucun bien sélectionné', 'error');
+        return;
+    }
     editingSectionId = null;
     sectionModal.classList.remove('hidden');
     document.getElementById('section-nom').value = '';
@@ -538,7 +597,8 @@ saveSectionBtn.addEventListener('click', async () => {
         if (!response.ok) throw new Error(data.error);
 
         closeModals();
-        await openBienDetail(currentBienId);
+        // Recharger les données et rafraîchir l'affichage sans changer de page
+        await reloadCurrentBien();
         showMessage(editingSectionId ? 'Section modifiée !' : 'Section ajoutée !');
         editingSectionId = null;
     } catch (error) {
@@ -550,6 +610,12 @@ saveSectionBtn.addEventListener('click', async () => {
 
 // Gestion des objets
 addObjetBtn.addEventListener('click', () => {
+    console.log('🔵 Clic sur "Ajouter un élément"');
+    if (!currentBienId) {
+        console.error('❌ Aucun bien sélectionné');
+        showMessage('Erreur : aucun bien sélectionné', 'error');
+        return;
+    }
     // Remplir le select des sections
     const objetSectionSelect = document.getElementById('objet-section');
     objetSectionSelect.innerHTML = '<option value="">Sans section</option>';
@@ -612,7 +678,7 @@ saveObjetBtn.addEventListener('click', async () => {
         if (!response.ok) throw new Error(data.error);
 
         closeModals();
-        await openBienDetail(currentBienId);
+        await reloadCurrentBien();
         showMessage('Élément ajouté !');
     } catch (error) {
         showMessage(error.message, 'error');
@@ -621,6 +687,16 @@ saveObjetBtn.addEventListener('click', async () => {
     }
 });
 
+// Recharger les données du bien actuel sans changer de page
+async function reloadCurrentBien() {
+    const response = await fetch(`/api/biens/${currentBienId}`);
+    const data = await response.json();
+    currentBien = data.bien;
+
+    // Rafraîchir l'affichage du template
+    displayEtatTable();
+}
+
 function displayEtatTable() {
     const container = document.getElementById('etat-container');
     container.innerHTML = '';
@@ -628,8 +704,8 @@ function displayEtatTable() {
     const sections = (currentBien.sections || []).sort((a, b) => (a.ordre || 0) - (b.ordre || 0));
     const objets = (currentBien.objets || []).sort((a, b) => (a.ordre || 0) - (b.ordre || 0));
 
-    // Objets sans section
-    const objetsSansSection = objets.filter(o => !o.sectionId);
+    // Objets sans section (utiliser section_id car vient de la DB)
+    const objetsSansSection = objets.filter(o => !o.section_id);
 
     // Si aucun élément et aucune section, afficher message vide
     if (sections.length === 0 && objets.length === 0) {
@@ -666,18 +742,16 @@ function displayEtatTable() {
         container.appendChild(sansSection);
     }
 
-    // Afficher les sections avec leurs objets
+    // Afficher les sections avec leurs objets (utiliser section_id car vient de la DB)
     sections.forEach(section => {
-        const objetsSection = objets.filter(o => o.sectionId === section.id);
+        const objetsSection = objets.filter(o => o.section_id === section.id);
 
         const sectionDiv = document.createElement('div');
         sectionDiv.className = 'section-container';
         sectionDiv.dataset.sectionId = section.id;
-        sectionDiv.draggable = true;
 
         sectionDiv.innerHTML = `
             <div class="section-header">
-                <i class="fas fa-grip-vertical drag-handle"></i>
                 <h4 class="section-title">${section.nom}</h4>
                 <div class="section-actions">
                     <button onclick="editSection('${section.id}', '${section.nom.replace(/'/g, "\\'")}')" class="btn-icon" title="Modifier"><i class="fas fa-edit"></i></button>
@@ -690,14 +764,163 @@ function displayEtatTable() {
         sectionDiv.appendChild(table);
 
         container.appendChild(sectionDiv);
-
-        // Drag and drop pour les sections
-        setupSectionDragAndDrop(sectionDiv);
     });
 
-    // Setup global drag events
-    setupGlobalSectionDragEvents();
+    // Setup global drag events pour les objets uniquement
     setupGlobalObjetDragEvents();
+}
+
+// Mettre à jour le résumé du template avec les dernières évaluations
+async function updateTemplateSummary() {
+    const container = document.getElementById('template-items-list');
+
+    console.log('🔄 Mise à jour du template summary pour le bien:', currentBienId);
+
+    const sections = (currentBien.sections || []).sort((a, b) => (a.ordre || 0) - (b.ordre || 0));
+    const objets = (currentBien.objets || []).sort((a, b) => (a.ordre || 0) - (b.ordre || 0));
+
+    if (objets.length === 0) {
+        container.innerHTML = '<p class="empty-state">Aucun élément configuré</p>';
+        return;
+    }
+
+    // Récupérer le dernier état des lieux pour obtenir les notes
+    let derniereEvaluations = {};
+    let dernierEtat = null;
+    try {
+        const response = await fetch(`/api/biens/${currentBienId}/etats-des-lieux`);
+        const data = await response.json();
+        const etats = data.etats || [];
+
+        console.log('📊 États des lieux trouvés:', etats.length);
+
+        // Prendre le dernier état terminé
+        dernierEtat = etats
+            .filter(e => e.termine)
+            .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+
+        console.log('✅ Dernier état terminé:', dernierEtat ? dernierEtat.id : 'Aucun');
+
+        if (dernierEtat) {
+            // Récupérer les détails de cet état
+            const detailResponse = await fetch(`/api/biens/${currentBienId}/etats-des-lieux/${dernierEtat.id}`);
+            const detailData = await detailResponse.json();
+
+            console.log('📄 Détails de l\'état:', detailData);
+
+            // Vérifier la structure des données
+            if (detailData && detailData.etat) {
+                const etatObjets = detailData.etat.etat_objets || [];
+                console.log('📝 Évaluations trouvées:', etatObjets.length);
+
+                etatObjets.forEach(eo => {
+                    if (eo && eo.objet_id) {
+                        derniereEvaluations[eo.objet_id] = {
+                            note: eo.note || null,
+                            commentaires: eo.commentaires || null
+                        };
+                    }
+                });
+
+                console.log('💾 Évaluations chargées:', Object.keys(derniereEvaluations).length);
+                console.log('🔍 Contenu des évaluations:', derniereEvaluations);
+            } else {
+                console.error('⚠️ Structure de données inattendue:', detailData);
+            }
+        }
+    } catch (error) {
+        console.error('❌ Erreur lors du chargement des évaluations:', error);
+    }
+
+    container.innerHTML = '';
+
+    // Créer le tableau principal
+    const table = document.createElement('table');
+    table.className = 'template-summary-table';
+
+    // En-tête du tableau
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+
+    let dateInfo = 'Aucune évaluation';
+    if (dernierEtat) {
+        const dateFormatee = new Date(dernierEtat.date).toLocaleDateString('fr-FR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        });
+        dateInfo = `Évaluation du ${dateFormatee}`;
+    }
+
+    headerRow.innerHTML = `
+        <th class="col-element">Élément</th>
+        <th class="col-note">Note</th>
+        <th class="col-comment">Commentaire</th>
+    `;
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+
+    // Objets sans section (utiliser section_id car vient de la DB)
+    const objetsSansSection = objets.filter(o => !o.section_id);
+    if (objetsSansSection.length > 0) {
+        objetsSansSection.forEach(objet => {
+            tbody.appendChild(createTemplateItemRow(objet, derniereEvaluations));
+        });
+    }
+
+    // Objets par section (utiliser section_id car vient de la DB)
+    sections.forEach(section => {
+        const objetsSection = objets.filter(o => o.section_id === section.id);
+        if (objetsSection.length > 0) {
+            // Ligne de séparation de section
+            const sectionRow = document.createElement('tr');
+            sectionRow.className = 'template-section-row';
+            sectionRow.innerHTML = `<td colspan="3">${section.nom}</td>`;
+            tbody.appendChild(sectionRow);
+
+            objetsSection.forEach(objet => {
+                tbody.appendChild(createTemplateItemRow(objet, derniereEvaluations));
+            });
+        }
+    });
+
+    table.appendChild(tbody);
+
+    // Ajouter la note avec la date
+    const dateNote = document.createElement('div');
+    dateNote.className = 'template-date-note';
+    dateNote.innerHTML = `<small><i class="fas fa-info-circle"></i> ${dateInfo}</small>`;
+
+    container.appendChild(dateNote);
+    container.appendChild(table);
+}
+
+function createTemplateItemRow(objet, evaluations) {
+    const row = document.createElement('tr');
+    row.className = 'template-item-row';
+
+    const eval = evaluations[objet.id];
+
+    console.log(`🔎 Objet "${objet.nom}" (ID: ${objet.id}):`, eval ? `Note=${eval.note}, Comment=${eval.commentaires}` : 'PAS D\'ÉVALUATION');
+
+    let noteDisplay = '-';
+    let noteClass = '';
+    if (eval && eval.note) {
+        noteDisplay = eval.note;
+        if (eval.note >= 4) noteClass = 'note-good';
+        else if (eval.note >= 3) noteClass = 'note-medium';
+        else noteClass = 'note-bad';
+    }
+
+    row.innerHTML = `
+        <td class="template-item-name">${objet.nom}</td>
+        <td class="template-item-note ${noteClass}">${noteDisplay}</td>
+        <td class="template-item-comment">${eval && eval.commentaires ? eval.commentaires : '-'}</td>
+    `;
+
+    return row;
 }
 
 function createObjetTable(objets) {
@@ -982,6 +1205,17 @@ async function saveObjetOrderAndSection() {
         }
 
         console.log('✅ Sauvegarde réussie ! Les changements ont été enregistrés.');
+
+        // Recharger les données du bien pour synchroniser
+        const response2 = await fetch(`/api/biens/${currentBienId}`);
+        const data2 = await response2.json();
+        currentBien = data2.bien;
+
+        console.log('✅ Données rechargées depuis la base de données');
+        console.log('📊 Objets après rechargement:', currentBien.objets.map(o => ({ id: o.id, nom: o.nom, section_id: o.section_id })));
+
+        // Rafraîchir l'affichage avec les nouvelles données
+        displayEtatTable();
     } catch (error) {
         console.error('❌ Erreur:', error);
         showMessage('Erreur lors de la réorganisation', 'error');
@@ -1013,7 +1247,12 @@ window.updateObjet = async (objetId, field, value) => {
 };
 
 window.deleteObjet = async (objetId) => {
-    if (!confirm('Supprimer cet élément ?')) return;
+    const confirmed = await showConfirmModal(
+        'Supprimer cet élément ?',
+        'Cet élément sera définitivement supprimé du bien.'
+    );
+
+    if (!confirmed) return;
 
     showLoading();
     try {
@@ -1022,7 +1261,7 @@ window.deleteObjet = async (objetId) => {
         });
         if (!response.ok) throw new Error('Erreur de suppression');
 
-        await openBienDetail(currentBienId);
+        await reloadCurrentBien();
         showMessage('Élément supprimé');
     } catch (error) {
         showMessage(error.message, 'error');
@@ -1039,7 +1278,12 @@ window.editSection = (sectionId, nom) => {
 };
 
 window.deleteSection = async (sectionId) => {
-    if (!confirm('Supprimer cette section ? Les éléments seront déplacés dans "Sans section".')) return;
+    const confirmed = await showConfirmModal(
+        'Supprimer cette section ?',
+        'La section sera supprimée et ses éléments seront déplacés dans "Sans section".'
+    );
+
+    if (!confirmed) return;
 
     showLoading();
     try {
@@ -1048,7 +1292,7 @@ window.deleteSection = async (sectionId) => {
         });
         if (!response.ok) throw new Error('Erreur de suppression');
 
-        await openBienDetail(currentBienId);
+        await reloadCurrentBien();
         showMessage('Section supprimée');
     } catch (error) {
         showMessage(error.message, 'error');
@@ -1057,9 +1301,7 @@ window.deleteSection = async (sectionId) => {
     }
 };
 
-generatePdfBtn.addEventListener('click', () => {
-    window.open(`/api/pdf/${currentBienId}`, '_blank');
-});
+// generatePdfBtn supprimé - fonctionnalité retirée
 
 // ===== GESTION DES ÉTATS DES LIEUX =====
 
@@ -1074,7 +1316,7 @@ async function openDemarrerEtatModal() {
         const response = await fetch(`/api/biens/${currentBienId}/etats-des-lieux`);
         const data = await response.json();
 
-        const etatsEntree = data.etatsDesLieux.filter(e => e.type === 'entree');
+        const etatsEntree = data.etats.filter(e => e.type === 'entree');
 
         // Remplir le select des états d'entrée
         etatEntreeIdSelect.innerHTML = '';
@@ -1139,7 +1381,7 @@ startEtatBtn.addEventListener('click', async () => {
         showMessage('État des lieux créé !');
 
         // Ouvrir directement l'état des lieux créé
-        await openEtatDetail(data.etatDesLieux.id);
+        await openEtatDetail(data.etat.id);
     } catch (error) {
         showMessage(error.message, 'error');
     } finally {
@@ -1154,7 +1396,7 @@ window.openEtatDetail = async (etatId) => {
     try {
         const response = await fetch(`/api/biens/${currentBienId}/etats-des-lieux/${etatId}`);
         const data = await response.json();
-        currentEtat = data.etatDesLieux;
+        currentEtat = data.etat;
 
         const typeLabel = currentEtat.type === 'entree' ? 'État d\'entrée' : 'État de sortie';
         document.getElementById('etat-title').textContent = `${typeLabel} - ${currentEtat.locataire || 'Sans locataire'}`;
@@ -1187,7 +1429,7 @@ function displayEtatDetail() {
     container.innerHTML = '';
 
     const sections = (currentEtat.sections || []).sort((a, b) => (a.ordre || 0) - (b.ordre || 0));
-    const objets = (currentEtat.objets || []).sort((a, b) => (a.ordre || 0) - (b.ordre || 0));
+    const objets = (currentEtat.etat_objets || []).sort((a, b) => (a.ordre || 0) - (b.ordre || 0));
 
     const objetsSansSection = objets.filter(o => !o.section_id);
 
@@ -1268,19 +1510,19 @@ function createEtatObjetTable(objets) {
                            placeholder="Commentaires entrée...">
                 </td>
                 <td>
-                    <select onchange="updateEtatObjet('${objet.id}', 'noteSortie', parseInt(this.value))">
-                        <option value="0" ${(objet.noteSortie === 0 || !objet.noteSortie) ? 'selected' : ''}>-</option>
-                        <option value="1" ${objet.noteSortie === 1 ? 'selected' : ''}>⭐</option>
-                        <option value="2" ${objet.noteSortie === 2 ? 'selected' : ''}>⭐⭐</option>
-                        <option value="3" ${objet.noteSortie === 3 ? 'selected' : ''}>⭐⭐⭐</option>
-                        <option value="4" ${objet.noteSortie === 4 ? 'selected' : ''}>⭐⭐⭐⭐</option>
-                        <option value="5" ${objet.noteSortie === 5 ? 'selected' : ''}>⭐⭐⭐⭐⭐</option>
+                    <select onchange="updateEtatObjet('${objet.id}', 'note', parseInt(this.value))">
+                        <option value="0" ${(objet.note === 0 || !objet.note) ? 'selected' : ''}>-</option>
+                        <option value="1" ${objet.note === 1 ? 'selected' : ''}>⭐</option>
+                        <option value="2" ${objet.note === 2 ? 'selected' : ''}>⭐⭐</option>
+                        <option value="3" ${objet.note === 3 ? 'selected' : ''}>⭐⭐⭐</option>
+                        <option value="4" ${objet.note === 4 ? 'selected' : ''}>⭐⭐⭐⭐</option>
+                        <option value="5" ${objet.note === 5 ? 'selected' : ''}>⭐⭐⭐⭐⭐</option>
                     </select>
                 </td>
                 <td>
-                    <input type="text" value="${objet.commentairesSortie || ''}"
+                    <input type="text" value="${objet.commentaires || ''}"
                            placeholder="Commentaires sortie..."
-                           onchange="updateEtatObjet('${objet.id}', 'commentairesSortie', this.value)">
+                           onchange="updateEtatObjet('${objet.id}', 'commentaires', this.value)">
                 </td>
             `;
             tbody.appendChild(row);
@@ -1332,6 +1574,7 @@ function createEtatObjetTable(objets) {
 // Mettre à jour un objet dans un état des lieux
 window.updateEtatObjet = async (objetId, field, value) => {
     try {
+        console.log('📝 Update objet:', { objetId, field, value });
         const body = { [field]: value };
 
         const response = await fetch(`/api/biens/${currentBienId}/etats-des-lieux/${currentEtatId}/objets/${objetId}`, {
@@ -1340,19 +1583,29 @@ window.updateEtatObjet = async (objetId, field, value) => {
             body: JSON.stringify(body)
         });
 
-        if (!response.ok) throw new Error('Erreur de mise à jour');
+        if (!response.ok) {
+            console.error('❌ Erreur update:', response.status);
+            throw new Error('Erreur de mise à jour');
+        }
 
+        console.log('✅ Update réussi');
         // Mettre à jour localement
-        const objet = currentEtat.objets.find(o => o.id === objetId);
+        const objet = currentEtat.etat_objets.find(o => o.id === objetId);
         if (objet) objet[field] = value;
     } catch (error) {
+        console.error('❌ Erreur updateEtatObjet:', error);
         showMessage(error.message, 'error');
     }
 };
 
 // Supprimer un état des lieux
 window.deleteEtat = async (etatId) => {
-    if (!confirm('Supprimer cet état des lieux ?')) return;
+    const confirmed = await showConfirmModal(
+        'Supprimer cet état des lieux ?',
+        'Cette action est irréversible. L\'état des lieux et toutes ses données seront définitivement supprimés.'
+    );
+
+    if (!confirmed) return;
 
     showLoading();
     try {
@@ -1362,6 +1615,14 @@ window.deleteEtat = async (etatId) => {
 
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Erreur de suppression');
+
+        // Si l'état supprimé est celui en cours de consultation, revenir à la vue du bien
+        if (currentEtatId === etatId) {
+            etatDetailSection.classList.add('hidden');
+            bienDetailSection.classList.remove('hidden');
+            currentEtatId = null;
+            currentEtat = null;
+        }
 
         // Recharger les documents
         await displayDocuments();
@@ -1382,25 +1643,67 @@ backFromEtatBtn.addEventListener('click', () => {
 });
 
 // Bouton Terminer dans un état des lieux
-terminerEtatBtn.addEventListener('click', () => {
-    etatDetailSection.classList.add('hidden');
-    openBienDetail(currentBienId);
-    currentEtatId = null;
-    currentEtat = null;
-    showMessage('État des lieux terminé !');
+terminerEtatBtn.addEventListener('click', async () => {
+    if (!currentEtatId) {
+        showMessage('Erreur : aucun état des lieux actif', 'error');
+        return;
+    }
+
+    showLoading();
+    try {
+        // Marquer l'état des lieux comme terminé dans la base de données
+        const response = await fetch(`/api/biens/${currentBienId}/etats-des-lieux/${currentEtatId}/terminer`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (!response.ok) {
+            throw new Error('Erreur lors de la finalisation de l\'état des lieux');
+        }
+
+        etatDetailSection.classList.add('hidden');
+        await openBienDetail(currentBienId);
+        currentEtatId = null;
+        currentEtat = null;
+        showMessage('État des lieux terminé !');
+    } catch (error) {
+        showMessage(error.message, 'error');
+    } finally {
+        hideLoading();
+    }
 });
 
 // Générer le PDF de l'état en cours de consultation
 generateEtatPdfBtn.addEventListener('click', () => {
-    if (currentEtatId) {
-        window.open(`/api/pdf/etat/${currentEtatId}`, '_blank');
+    if (currentEtatId && currentBienId) {
+        window.open(`/api/biens/${currentBienId}/etats-des-lieux/${currentEtatId}/pdf`, '_blank');
     }
 });
 
 // Générer le PDF d'un état des lieux (depuis la liste)
-window.generateEtatPdf = (etatId) => {
-    window.open(`/api/pdf/etat/${etatId}`, '_blank');
+window.generateEtatPdf = (bienId, etatId) => {
+    window.open(`/api/biens/${bienId}/etats-des-lieux/${etatId}/pdf`, '_blank');
 };
+
+// Navigation vers l'édition du template
+document.getElementById('edit-template-btn').addEventListener('click', () => {
+    bienDetailSection.classList.add('hidden');
+    templateEditSection.classList.remove('hidden');
+    displayEtatTable();
+});
+
+// Retour depuis l'édition du template
+document.getElementById('back-from-template-btn').addEventListener('click', () => {
+    templateEditSection.classList.add('hidden');
+    openBienDetail(currentBienId);
+});
+
+// Sauvegarder le template
+document.getElementById('save-template-btn').addEventListener('click', () => {
+    showMessage('Template sauvegardé avec succès !', 'success');
+    templateEditSection.classList.add('hidden');
+    openBienDetail(currentBienId);
+});
 
 // Créer l'état de sortie depuis un état d'entrée
 creerEtatSortieBtn.addEventListener('click', async () => {
@@ -1430,7 +1733,7 @@ creerEtatSortieBtn.addEventListener('click', async () => {
         showMessage('État de sortie créé !');
 
         // Ouvrir directement l'état de sortie créé
-        await openEtatDetail(data.etatDesLieux.id);
+        await openEtatDetail(data.etat.id);
     } catch (error) {
         showMessage(error.message, 'error');
     } finally {
@@ -1625,7 +1928,12 @@ uploadPhotoBtn.addEventListener('click', async () => {
 
 // Supprimer une photo
 window.deletePhoto = async (photoId) => {
-    if (!confirm('Supprimer cette photo ?')) return;
+    const confirmed = await showConfirmModal(
+        'Supprimer cette photo ?',
+        'Cette photo sera définitivement supprimée.'
+    );
+
+    if (!confirmed) return;
 
     showLoading();
     try {
@@ -1656,11 +1964,11 @@ createContratBtn.addEventListener('click', () => {
     contratModal.classList.remove('hidden');
     document.getElementById('contrat-nom').value = '';
     document.getElementById('contrat-prenom').value = '';
-    document.getElementById('contrat-adresse-locataire').value = '';
+    document.getElementById('contrat-email').value = '';
+    document.getElementById('contrat-numero-chambre').value = '';
     document.getElementById('contrat-date-debut').value = '';
     document.getElementById('contrat-date-fin').value = '';
     document.getElementById('contrat-loyer').value = '';
-    document.getElementById('contrat-charges').value = '';
     document.getElementById('contrat-depot').value = '';
 });
 
@@ -1668,9 +1976,22 @@ createContratBtn.addEventListener('click', () => {
 saveContratBtn.addEventListener('click', async () => {
     const nom = document.getElementById('contrat-nom').value;
     const prenom = document.getElementById('contrat-prenom').value;
+    const dateDebut = document.getElementById('contrat-date-debut').value;
+    const dateFin = document.getElementById('contrat-date-fin').value;
+    const loyer = document.getElementById('contrat-loyer').value;
 
     if (!nom || !prenom) {
         showMessage('Nom et prénom requis', 'error');
+        return;
+    }
+
+    if (!dateDebut || !dateFin) {
+        showMessage('Les dates de début et de fin sont requises', 'error');
+        return;
+    }
+
+    if (!loyer) {
+        showMessage('Le loyer est requis', 'error');
         return;
     }
 
@@ -1684,11 +2005,11 @@ saveContratBtn.addEventListener('click', async () => {
                 type: 'bail',
                 nomLocataire: nom,
                 prenomLocataire: prenom,
-                adresseLocataire: document.getElementById('contrat-adresse-locataire').value,
-                dateDebut: document.getElementById('contrat-date-debut').value,
-                dateFin: document.getElementById('contrat-date-fin').value,
-                loyer: parseFloat(document.getElementById('contrat-loyer').value) || null,
-                charges: parseFloat(document.getElementById('contrat-charges').value) || null,
+                emailLocataire: document.getElementById('contrat-email').value,
+                numeroChambre: document.getElementById('contrat-numero-chambre').value,
+                dateDebut: dateDebut,
+                dateFin: dateFin,
+                loyer: parseFloat(loyer),
                 depotGarantie: parseFloat(document.getElementById('contrat-depot').value) || null
             })
         });
@@ -1723,94 +2044,7 @@ window.downloadContratPDF = async (contratId) => {
             return;
         }
 
-        // Récupérer les infos du bien et propriétaire
-        const bienResponse = await fetch(`/api/biens/${currentBienId}`);
-        const bienData = await bienResponse.json();
-        const bien = bienData.bien;
-        const proprietaire = bienData.bien.proprietaires;
-
-        // Générer le PDF avec jsPDF
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-
-        const pageWidth = doc.internal.pageSize.getWidth();
-        const margin = 20;
-        let y = 20;
-
-        // Titre
-        doc.setFontSize(18);
-        doc.setFont('helvetica', 'bold');
-        doc.text('CONTRAT DE LOCATION TYPE', pageWidth / 2, y, { align: 'center' });
-        y += 10;
-
-        // Sous-titre
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'normal');
-        const sousTitre = '(Soumis au titre Ier bis de la loi du 6 juillet 1989...)';
-        doc.text(sousTitre, pageWidth / 2, y, { align: 'center' });
-        y += 15;
-
-        // I. DÉSIGNATION DES PARTIES
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-        doc.text('I. DÉSIGNATION DES PARTIES', margin, y);
-        y += 8;
-
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Bailleur', margin, y);
-        doc.text('Locataire', pageWidth / 2 + 10, y);
-        y += 6;
-
-        doc.setFont('helvetica', 'normal');
-        doc.text(proprietaire?.nom || 'Non renseigné', margin, y);
-        doc.text(`${contrat.prenom_locataire} ${contrat.nom_locataire}`, pageWidth / 2 + 10, y);
-        y += 5;
-        doc.text(proprietaire?.email || 'Non renseigné', margin, y);
-        doc.text(contrat.adresse_locataire || 'Non renseignée', pageWidth / 2 + 10, y);
-        y += 12;
-
-        // II. OBJET DU CONTRAT
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-        doc.text('II. OBJET DU CONTRAT', margin, y);
-        y += 8;
-
-        doc.setFontSize(10);
-        doc.text('A. Consistance du logement', margin, y);
-        y += 6;
-        doc.setFont('helvetica', 'normal');
-        doc.text(`Désignation : ${bien.nom || 'Non renseigné'}`, margin, y);
-        y += 5;
-        doc.text(`Adresse : ${bien.adresse || 'Non renseignée'}`, margin, y);
-        y += 5;
-        doc.text('Type d\'habitat : Logement individuel', margin, y);
-        y += 5;
-        doc.text('Régime juridique : Location vide', margin, y);
-        y += 10;
-
-        doc.setFont('helvetica', 'bold');
-        doc.text('B. Destination des locaux', margin, y);
-        y += 6;
-        doc.setFont('helvetica', 'normal');
-        doc.text('Usage d\'habitation exclusive (résidence principale du locataire)', margin, y);
-        y += 15;
-
-        // III. DATE DE PRISE D'EFFET ET DURÉE
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-        doc.text('III. DATE DE PRISE D\'EFFET ET DURÉE', margin, y);
-        y += 8;
-
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        const dateDebut = contrat.date_debut ? new Date(contrat.date_debut).toLocaleDateString('fr-FR') : 'Non définie';
-        const dateFin = contrat.date_fin ? new Date(contrat.date_fin).toLocaleDateString('fr-FR') : 'Non définie';
-        doc.text(`Prise d'effet : ${dateDebut}`, margin, y);
-        doc.text(`Fin d'effet : ${dateFin}`, pageWidth / 2 + 10, y);
-        y += 6;
-
-        // Calculer la durée
+        // Calculer la durée en mois
         let duree = 'Non définie';
         if (contrat.date_debut && contrat.date_fin) {
             const debut = new Date(contrat.date_debut);
@@ -1818,119 +2052,294 @@ window.downloadContratPDF = async (contratId) => {
             const mois = (fin.getFullYear() - debut.getFullYear()) * 12 + (fin.getMonth() - debut.getMonth());
             duree = `${mois} mois`;
         }
-        doc.text(`Durée du contrat : ${duree}`, margin, y);
+
+        const dateDebut = contrat.date_debut ? new Date(contrat.date_debut).toLocaleDateString('fr-FR') : 'Non définie';
+        const dateFin = contrat.date_fin ? new Date(contrat.date_fin).toLocaleDateString('fr-FR') : 'Non définie';
+        const aujourdhui = new Date().toLocaleDateString('fr-FR');
+
+        // Générer le PDF avec jsPDF
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const margin = 18;
+        let y = 20;
+
+        // Helper pour ajouter une nouvelle page si nécessaire
+        const checkPageBreak = (neededSpace = 20) => {
+            if (y + neededSpace > pageHeight - 20) {
+                doc.addPage();
+                y = 20;
+            }
+        };
+
+        // Titre
+        doc.setFontSize(16);
+        doc.setFont('times', 'bold');
+        doc.text('CONTRAT DE LOCATION', pageWidth / 2, y, { align: 'center' });
+        y += 10;
+
+        // Sous-titre loi
+        doc.setFontSize(10);
+        doc.setFont('times', 'normal');
+        const sousTitre = '(Soumis au titre Ier bis de la loi du 6 juillet 1989 tendant à améliorer les rapports locatifs et portant modification de la loi n° 86-1290 du 23 décembre 1986)';
+        const splitSousTitre = doc.splitTextToSize(sousTitre, pageWidth - 2 * margin);
+        doc.text(splitSousTitre, pageWidth / 2, y, { align: 'center' });
+        y += splitSousTitre.length * 5 + 10;
+
+        // DÉSIGNATION DES PARTIES
+        checkPageBreak();
+        doc.setFontSize(12.5);
+        doc.setFont('times', 'bold');
+        doc.text('DÉSIGNATION DES PARTIES', margin, y);
         y += 8;
 
-        doc.setFontSize(9);
-        doc.text('Le locataire peut résilier à tout moment avec un préavis d\'un mois.', margin, y);
+        doc.setFontSize(11);
+        doc.setFont('times', 'bold');
+        doc.text('Le présent contrat est conclu entre les soussignés :', margin, y);
+        y += 8;
+
+        doc.setFont('times', 'normal');
+        doc.text('SARL ALCAYAMA,', margin, y);
+        y += 5;
+        doc.text('38 rue du moulin bâtard, 44490, Le Croisic,', margin, y);
+        y += 5;
+        doc.text('personne morale inscrite au RCS au numéro 892 739 764', margin, y);
+        y += 5;
+        doc.text('Mail : alcamaya.contact@gmail.com', margin, y);
+        y += 5;
+        doc.text('désigné(s) ci-après « le bailleur ».', margin, y);
+        y += 10;
+
+        doc.text(`Nom : ${contrat.nom_locataire || 'Non renseigné'}`, margin, y);
+        y += 5;
+        doc.text(`Prénom : ${contrat.prenom_locataire || 'Non renseigné'}`, margin, y);
+        y += 5;
+        doc.text(`Mail : ${contrat.email_locataire || 'Non renseigné'}`, margin, y);
+        y += 5;
+        doc.text('désigné(s) ci-après « le locataire ».', margin, y);
+        y += 10;
+
+        doc.text('Il a été convenu ce qui suit :', margin, y);
+        y += 12;
+
+        // II. OBJET DU CONTRAT
+        checkPageBreak();
+        doc.setFontSize(12.5);
+        doc.setFont('times', 'bold');
+        doc.text('II. OBJET DU CONTRAT', margin, y);
+        y += 8;
+
+        doc.setFontSize(11);
+        doc.setFont('times', 'normal');
+        doc.text('Le présent contrat a pour objet la location d\'un logement ainsi déterminé :', margin, y);
+        y += 8;
+
+        doc.setFont('times', 'bold');
+        doc.text('A. Consistance du logement', margin, y);
+        y += 6;
+        doc.setFont('times', 'normal');
+
+        const items = [
+            `localisation du logement : 11 rue Marcel Deplantay, ${contrat.numero_chambre || 'Non renseigné'}`,
+            'type d\'habitat : Immeuble collectif',
+            'régime juridique de l\'immeuble : Mono-propriété',
+            'période de construction : avant 1949',
+            'surface habitable : 180 m2',
+            'nombre de pièces principales : 1',
+            'le cas échéant, autres parties du logement : une cuisine partagée, salon, WC, salle de bain, jardin',
+            'le cas échéant, Éléments d\'équipements du logement : salon équipé, cuisine équipée, salle de bain équipée, jardin équipé',
+            'modalité de production chauffage : électrique collectif',
+            'modalité de production d\'eau chaude sanitaire : électrique collectif'
+        ];
+
+        items.forEach(item => {
+            checkPageBreak();
+            const splitItem = doc.splitTextToSize(`• ${item}`, pageWidth - 2 * margin - 5);
+            doc.text(splitItem, margin + 2, y);
+            y += splitItem.length * 5;
+        });
+        y += 5;
+
+        checkPageBreak();
+        doc.setFont('times', 'bold');
+        doc.text('B. Destination des locaux :', margin, y);
+        y += 6;
+        doc.setFont('times', 'normal');
+        doc.text('Usage d\'habitation.', margin, y);
+        y += 12;
+
+        // Nouvelle page
+        doc.addPage();
+        y = 20;
+
+        // III. DATE DE PRISE D'EFFET ET DURÉE
+        doc.setFontSize(12.5);
+        doc.setFont('times', 'bold');
+        doc.text('III. DATE DE PRISE D\'EFFET ET DURÉE DU CONTRAT', margin, y);
+        y += 8;
+
+        doc.setFontSize(11);
+        doc.setFont('times', 'normal');
+        doc.text('La durée du contrat et sa date de prise d\'effet sont ainsi définies :', margin, y);
+        y += 8;
+
+        doc.text(`• A. Date de prise d'effet du contrat : ${dateDebut}`, margin + 2, y);
+        y += 5;
+        doc.text(`• B. Date de fin d'effet du contrat : ${dateFin}`, margin + 2, y);
+        y += 5;
+        doc.text(`• C. Durée du contrat : ${duree}`, margin + 2, y);
+        y += 8;
+
+        doc.text('Le locataire peut mettre fin au bail à tout moment, après avoir donné un préavis d\'un mois.', margin, y);
         y += 12;
 
         // IV. CONDITIONS FINANCIÈRES
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
+        checkPageBreak();
+        doc.setFontSize(12.5);
+        doc.setFont('times', 'bold');
         doc.text('IV. CONDITIONS FINANCIÈRES', margin, y);
         y += 8;
 
-        doc.setFontSize(10);
+        doc.setFontSize(11);
+        doc.setFont('times', 'normal');
+        doc.text('Les parties conviennent des conditions financières suivantes :', margin, y);
+        y += 8;
+
+        doc.setFont('times', 'bold');
         doc.text('A. Loyer', margin, y);
         y += 6;
-        doc.setFont('helvetica', 'normal');
-        doc.text(`Montant mensuel : ${contrat.loyer ? contrat.loyer + ' €' : 'Non défini'}`, margin, y);
-        y += 5;
-        if (contrat.charges) {
-            doc.text(`Charges : ${contrat.charges} €`, margin, y);
-            y += 5;
-        }
-        y += 5;
+        doc.setFont('times', 'italic');
+        doc.text('Fixation du loyer initial :', margin, y);
+        y += 6;
+        doc.setFont('times', 'normal');
+        doc.text(`Montant du loyer mensuel : ${contrat.loyer || 'Non défini'} € toutes charges incluses.`, margin, y);
+        y += 10;
 
-        doc.setFont('helvetica', 'bold');
+        doc.setFont('times', 'bold');
         doc.text('B. Modalités de paiement', margin, y);
         y += 6;
-        doc.setFont('helvetica', 'normal');
-        doc.text('• Méthode : Virement bancaire', margin + 5, y);
+        doc.setFont('times', 'normal');
+        doc.text('• méthode de paiement : transfert bancaire', margin + 2, y);
         y += 5;
-        doc.text('• Date de paiement : Le 1er du mois', margin + 5, y);
+        doc.text('• date de paiement : le locataire s\'engage à réaliser des transferts du montant du loyer', margin + 2, y);
         y += 5;
-        doc.text(`• Charges incluses : ${contrat.charges ? 'Oui' : 'Non'}`, margin + 5, y);
-        y += 12;
+        doc.text('  avant le 5 de chaque mois', margin + 2, y);
+        y += 5;
+        const chargesText = '• les charges incluent comprennent l\'électricité, l\'eau ainsi que l\'ensemble des charges de propriété. Les charges comprises au contrat n\'incluent pas la consommation liée au chargement de véhicules électriques (voiture, trottinette, vélo, etc.), laquelle pourra faire l\'objet d\'une facturation supplémentaire.';
+        const splitCharges = doc.splitTextToSize(chargesText, pageWidth - 2 * margin - 5);
+        doc.text(splitCharges, margin + 2, y);
+        y += splitCharges.length * 5 + 10;
 
         // V. TRAVAUX
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
+        checkPageBreak();
+        doc.setFontSize(12.5);
+        doc.setFont('times', 'bold');
         doc.text('V. TRAVAUX', margin, y);
         y += 6;
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.text('Le locataire s\'engage à ne pas réaliser de travaux sans accord écrit préalable du bailleur.', margin, y);
+        doc.setFontSize(11);
+        doc.setFont('times', 'normal');
+        doc.text('Le locataire s\'engage à ne pas réaliser de travaux de tout ordre dans le logement sans', margin, y);
+        y += 5;
+        doc.text('l\'accord préalable du bailleur.', margin, y);
         y += 12;
 
         // VI. GARANTIES
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
+        checkPageBreak();
+        doc.setFontSize(12.5);
+        doc.setFont('times', 'bold');
         doc.text('VI. GARANTIES', margin, y);
         y += 6;
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`Dépôt de garantie : ${contrat.depot_garantie ? contrat.depot_garantie + ' €' : 'Non défini'}.`, margin, y);
+        doc.setFontSize(11);
+        doc.setFont('times', 'normal');
+        const depotGarantie = contrat.depot_garantie || contrat.loyer || 'Non défini';
+        const garantieText = `Le locataire dépose un chèque de caution ou effectue un virement bancaire d'une valeur égale à un mois de loyer (${depotGarantie} €), qui sera encaissé puis rendu par le bailleur au terme du présent contrat.`;
+        const splitGarantie = doc.splitTextToSize(garantieText, pageWidth - 2 * margin);
+        doc.text(splitGarantie, margin, y);
+        y += splitGarantie.length * 5 + 5;
+        doc.text('En cas de dégradation de l\'immeuble, ou de meubles composant le logement, la valeur des', margin, y);
         y += 5;
-        doc.setFontSize(9);
-        doc.text('En cas de dégradation, le coût sera déduit du montant restitué.', margin, y);
+        doc.text('dommages sera soustraite au montant rendu.', margin, y);
         y += 12;
-
-        // Nouvelle page si nécessaire
-        if (y > 250) {
-            doc.addPage();
-            y = 20;
-        }
 
         // VII. CLAUSE RÉSOLUTOIRE
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
+        checkPageBreak();
+        doc.setFontSize(12.5);
+        doc.setFont('times', 'bold');
         doc.text('VII. CLAUSE RÉSOLUTOIRE', margin, y);
         y += 6;
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        const textClause = 'À défaut de paiement à la date convenue, après un commandement de payer resté infructueux 2 mois, le bail peut être résilié de plein droit.';
-        const splitClause = doc.splitTextToSize(textClause, pageWidth - 2 * margin);
+        doc.setFontSize(11);
+        doc.setFont('times', 'normal');
+        const clauseResolutoire = 'Il est expressément convenu qu\'à défaut de paiement du dépôt de garantie, d\'un seul terme de loyer ou des charges à leur échéance et deux mois après un commandement de payer demeuré infructueux, le bail sera résilié de plein droit si bon semble au bailleur.';
+        const splitClause = doc.splitTextToSize(clauseResolutoire, pageWidth - 2 * margin);
         doc.text(splitClause, margin, y);
-        y += splitClause.length * 5 + 8;
+        y += splitClause.length * 5 + 12;
 
         // X. AUTRES CONDITIONS PARTICULIÈRES
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
+        checkPageBreak(50);
+        doc.setFontSize(12.5);
+        doc.setFont('times', 'bold');
         doc.text('X. AUTRES CONDITIONS PARTICULIÈRES', margin, y);
+        y += 8;
+
+        doc.setFontSize(11);
+        doc.text('A. Condition(s) relative(s) à la sous-location', margin, y);
         y += 6;
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.text('Sous-location interdite. Respect du bon-vivre ensemble. Interdiction de fumer. Pas d\'animaux.', margin, y);
-        y += 5;
-        doc.setFontSize(9);
-        doc.text('Présence d\'un visiteur > 4 jours non signalée : peut déclencher la clause résolutoire.', margin, y);
-        y += 12;
+        doc.setFont('times', 'normal');
+        const sousLoc = 'Le logement en question ne pourra pas être sous-loué ou cédé à un tiers, le présent contrat s\'applique uniquement entre les parties précédemment concernées.';
+        const splitSousLoc = doc.splitTextToSize(sousLoc, pageWidth - 2 * margin);
+        doc.text(splitSousLoc, margin, y);
+        y += splitSousLoc.length * 5 + 10;
+
+        checkPageBreak();
+        doc.setFont('times', 'bold');
+        doc.text('B. Autres conditions particulières', margin, y);
+        y += 6;
+        doc.setFont('times', 'normal');
+
+        const autresConditions = [
+            'Le locataire est tenu de respecter les règles du bon-vivre ensemble, de respect mutuel avec les locataires résidant dans les logements voisins, que ce soit dans l\'usage des parties privées (nuisances sonores), ou communes.',
+            'Il est strictement interdit de fumer à l\'intérieur du logement et des parties communes intérieures.',
+            'Le locataire est tenu de ne pas ramener d\'animaux dans le logement.',
+            'Le locataire est tenu de souscrire et de maintenir pendant toute la durée du bail une assurance couvrant les risques locatifs (incendie, dégâts des eaux, explosion, etc.) et d\'en justifier au bailleur chaque année sur demande.',
+            'Le locataire s\'engage à respecter les règles ci-dessus en cas de visite d\'une personne tierce au contrat. Le logement vise à la location d\'une personne seule. La présence d\'un visiteur pour une durée supérieure à 4 jours, sans en avoir informé au préalable le bailleur, pourrait être considérée comme élément déclencheur de la clause résolutoire.'
+        ];
+
+        autresConditions.forEach(condition => {
+            checkPageBreak();
+            const split = doc.splitTextToSize(condition, pageWidth - 2 * margin);
+            doc.text(split, margin, y);
+            y += split.length * 5 + 5;
+        });
+        y += 10;
 
         // XI. ANNEXES
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
+        checkPageBreak();
+        doc.setFontSize(12.5);
+        doc.setFont('times', 'bold');
         doc.text('XI. ANNEXES', margin, y);
         y += 6;
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.text('• État des lieux d\'entrée', margin + 5, y);
-        y += 5;
-        doc.text('• Inventaire du mobilier (le cas échéant)', margin + 5, y);
-        y += 20;
+        doc.setFontSize(11);
+        doc.setFont('times', 'bold');
+        doc.text('Sont annexées et jointes au contrat de location les pièces suivantes :', margin, y);
+        y += 6;
+        doc.setFont('times', 'normal');
+        doc.text('• Un état des lieux, un inventaire et un état détaillé du mobilier', margin + 2, y);
+        y += 15;
 
         // Signatures
-        const aujourdhui = new Date().toLocaleDateString('fr-FR');
-        doc.text(`Fait le ${aujourdhui}`, margin, y);
+        checkPageBreak(40);
+        doc.text(`Le ${aujourdhui}, à REDON`, margin, y);
         y += 20;
 
-        doc.setFont('helvetica', 'bold');
+        doc.setFont('times', 'bold');
+        const colWidth = (pageWidth - 2 * margin) / 2;
         doc.text('Signature du bailleur', margin, y);
-        doc.text('Signature du locataire', pageWidth / 2 + 10, y);
+        doc.text('Signature du locataire', margin + colWidth, y);
         y += 15;
         doc.line(margin, y, margin + 60, y);
-        doc.line(pageWidth / 2 + 10, y, pageWidth / 2 + 70, y);
+        doc.line(margin + colWidth, y, margin + colWidth + 60, y);
 
         // Télécharger le PDF
         doc.save(`contrat-${contrat.nom_locataire}-${contrat.prenom_locataire}.pdf`);
@@ -1971,7 +2380,12 @@ window.archiverContrat = async (contratId) => {
 
 // Supprimer un contrat
 window.deleteContrat = async (contratId) => {
-    if (!confirm('Supprimer ce contrat ?')) return;
+    const confirmed = await showConfirmModal(
+        'Supprimer ce contrat ?',
+        'Cette action est irréversible. Le contrat sera définitivement supprimé.'
+    );
+
+    if (!confirmed) return;
 
     showLoading();
     try {
@@ -1988,6 +2402,615 @@ window.deleteContrat = async (contratId) => {
     } catch (error) {
         console.error('Erreur:', error);
         showMessage('Erreur lors de la suppression', 'error');
+    } finally {
+        hideLoading();
+    }
+};
+// ==================== QUITTANCES ====================
+const createQuittanceBtn = document.getElementById('create-quittance-btn');
+const quittanceModal = document.getElementById('quittance-modal');
+const saveQuittanceBtn = document.getElementById('save-quittance-btn');
+const quittancesContainer = document.getElementById('quittances-container');
+
+// ==================== PARAMÈTRES / ADMINISTRATEURS ====================
+const settingsBtn = document.getElementById('settings-btn');
+
+settingsBtn.addEventListener('click', () => {
+    openSettingsModal();
+});
+
+// Ouvrir le modal de création de quittance
+createQuittanceBtn.addEventListener('click', async () => {
+    // Charger les contrats disponibles
+    try {
+        const response = await fetch(`/api/biens/${currentBienId}/contrats`);
+        const data = await response.json();
+        const contrats = data.contrats.filter(c => c.actif);
+
+        const selectContrat = document.getElementById('quittance-contrat');
+        selectContrat.innerHTML = '<option value="">Sélectionner un contrat</option>';
+
+        contrats.forEach(contrat => {
+            const option = document.createElement('option');
+            option.value = contrat.id;
+            option.textContent = `${contrat.prenom_locataire} ${contrat.nom_locataire}`;
+            option.dataset.loyer = contrat.loyer;
+            selectContrat.appendChild(option);
+        });
+
+        // Pré-remplir avec la date actuelle
+        const now = new Date();
+        document.getElementById('quittance-mois').value = now.getMonth() + 1;
+        document.getElementById('quittance-annee').value = now.getFullYear();
+        document.getElementById('quittance-date-paiement').value = now.toISOString().split('T')[0];
+
+        quittanceModal.classList.remove('hidden');
+    } catch (error) {
+        console.error('Erreur:', error);
+        showMessage('Erreur lors du chargement des contrats', 'error');
+    }
+});
+
+// Auto-remplir le loyer quand on sélectionne un contrat
+document.getElementById('quittance-contrat').addEventListener('change', (e) => {
+    const selectedOption = e.target.selectedOptions[0];
+    if (selectedOption && selectedOption.dataset.loyer) {
+        document.getElementById('quittance-loyer').value = selectedOption.dataset.loyer;
+    }
+});
+
+// Créer une quittance
+saveQuittanceBtn.addEventListener('click', async () => {
+    const contratId = document.getElementById('quittance-contrat').value;
+    const mois = document.getElementById('quittance-mois').value;
+    const annee = document.getElementById('quittance-annee').value;
+    const montantLoyer = document.getElementById('quittance-loyer').value;
+    const montantCharges = document.getElementById('quittance-charges').value;
+    const datePaiement = document.getElementById('quittance-date-paiement').value;
+    const modePaiement = document.getElementById('quittance-mode-paiement').value;
+    const observations = document.getElementById('quittance-observations').value;
+
+    if (!contratId || !mois || !annee || !montantLoyer) {
+        showMessage('Veuillez remplir tous les champs requis', 'error');
+        return;
+    }
+
+    showLoading();
+    try {
+        const response = await fetch(`/api/biens/${currentBienId}/quittances`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contratId,
+                bienId: currentBienId,
+                mois: parseInt(mois),
+                annee: parseInt(annee),
+                montantLoyer: parseFloat(montantLoyer),
+                montantCharges: parseFloat(montantCharges) || 0,
+                datePaiement: datePaiement || null,
+                modePaiement,
+                observations
+            })
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Erreur lors de la création');
+
+        showMessage('Quittance créée avec succès !');
+        closeModals();
+        await loadQuittances();
+    } catch (error) {
+        console.error('Erreur:', error);
+        showMessage(error.message, 'error');
+    } finally {
+        hideLoading();
+    }
+});
+
+// Charger les quittances
+async function loadQuittances() {
+    try {
+        const response = await fetch(`/api/biens/${currentBienId}/quittances`);
+        const data = await response.json();
+        const quittances = data.quittances || [];
+
+        if (quittances.length === 0) {
+            quittancesContainer.innerHTML = '<p style="color: var(--text-light); padding: 20px;">Aucune quittance générée</p>';
+            return;
+        }
+
+        const moisNoms = ['', 'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+
+        quittancesContainer.innerHTML = quittances.map(q => `
+            <div class="quittance-item">
+                <div class="quittance-info">
+                    <div class="quittance-date">${moisNoms[q.mois]} ${q.annee}</div>
+                    <div class="quittance-locataire">${q.contrats?.prenom_locataire} ${q.contrats?.nom_locataire}</div>
+                    <div class="quittance-montant">${q.montant_total.toFixed(2)} €</div>
+                </div>
+                <div class="quittance-actions">
+                    <button onclick="downloadQuittancePDF('${q.id}')" class="btn-primary btn-small">
+                        <i class="fas fa-download"></i> PDF
+                    </button>
+                    <button onclick="sendQuittanceEmail('${q.id}')" class="btn-success btn-small">
+                        <i class="fas fa-envelope"></i> Envoyer
+                    </button>
+                    <button onclick="deleteQuittance('${q.id}')" class="btn-danger-small">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error('Erreur:', error);
+        showMessage('Erreur lors du chargement des quittances', 'error');
+    }
+}
+
+// Supprimer une quittance
+window.deleteQuittance = async (quittanceId) => {
+    const confirmed = await showConfirmModal(
+        'Supprimer cette quittance ?',
+        'Cette action est irréversible.'
+    );
+
+    if (!confirmed) return;
+
+    showLoading();
+    try {
+        const response = await fetch(`/api/quittances/${quittanceId}`, {
+            method: 'DELETE'
+        });
+
+        if (!response.ok) throw new Error('Erreur lors de la suppression');
+
+        showMessage('Quittance supprimée');
+        await loadQuittances();
+    } catch (error) {
+        console.error('Erreur:', error);
+        showMessage(error.message, 'error');
+    } finally {
+        hideLoading();
+    }
+};
+
+// Générer le PDF d'une quittance
+window.downloadQuittancePDF = async (quittanceId) => {
+    try {
+        showLoading();
+
+        // Récupérer les données de la quittance
+        const response = await fetch(`/api/quittances/${quittanceId}`);
+        const data = await response.json();
+        const quittance = data.quittance;
+
+        if (!quittance) {
+            showMessage('Quittance non trouvée', 'error');
+            return;
+        }
+
+        const contrat = quittance.contrats;
+        const bien = contrat.biens;
+        const moisNoms = ['', 'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+
+        // Générer le PDF
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const margin = 20;
+        let y = 20;
+
+        // Couleurs de la direction artistique
+        const primaryColor = [37, 99, 235]; // #2563EB
+        const darkColor = [15, 23, 42]; // #0F172A
+        const lightGray = [226, 232, 240]; // #E2E8F0
+        const successColor = [5, 150, 105]; // #059669
+
+        // Bandeau supérieur avec couleur primaire
+        doc.setFillColor(...primaryColor);
+        doc.rect(0, 0, pageWidth, 35, 'F');
+
+        // En-tête blanc sur fond bleu
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(24);
+        doc.setFont('helvetica', 'bold');
+        doc.text('QUITTANCE DE LOYER', pageWidth / 2, 15, { align: 'center' });
+
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`${moisNoms[quittance.mois]} ${quittance.annee}`, pageWidth / 2, 25, { align: 'center' });
+
+        y = 45;
+        doc.setTextColor(...darkColor);
+
+        // Carte Bailleur avec fond gris clair
+        doc.setFillColor(...lightGray);
+        doc.roundedRect(margin, y, pageWidth - 2 * margin, 38, 3, 3, 'F');
+
+        doc.setTextColor(...primaryColor);
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.text('BAILLEUR', margin + 5, y + 7);
+
+        doc.setTextColor(...darkColor);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text('SARL ALCAYAMA', margin + 5, y + 14);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.text('38 rue du moulin bâtard, 44490 Le Croisic', margin + 5, y + 20);
+        doc.text('RCS : 892 739 764', margin + 5, y + 26);
+        doc.text('Email : alcamaya.contact@gmail.com', margin + 5, y + 32);
+
+        y += 48;
+
+        // Carte Locataire avec fond gris clair
+        const locataireHeight = contrat.email_locataire ? 28 : 22;
+        doc.setFillColor(...lightGray);
+        doc.roundedRect(margin, y, pageWidth - 2 * margin, locataireHeight, 3, 3, 'F');
+
+        doc.setTextColor(...primaryColor);
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.text('LOCATAIRE', margin + 5, y + 7);
+
+        doc.setTextColor(...darkColor);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`${contrat.prenom_locataire} ${contrat.nom_locataire}`, margin + 5, y + 14);
+
+        if (contrat.email_locataire) {
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9);
+            doc.text(`Email : ${contrat.email_locataire}`, margin + 5, y + 20);
+        }
+
+        y += locataireHeight + 10;
+
+        // Carte Période et bien avec fond gris clair
+        let bienHeight = 22;
+        if (bien.adresse) bienHeight += 6;
+        if (contrat.numero_chambre) bienHeight += 6;
+
+        doc.setFillColor(...lightGray);
+        doc.roundedRect(margin, y, pageWidth - 2 * margin, bienHeight, 3, 3, 'F');
+
+        doc.setTextColor(...primaryColor);
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.text('PÉRIODE ET BIEN CONCERNÉS', margin + 5, y + 7);
+
+        doc.setTextColor(...darkColor);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        let yBien = y + 14;
+        doc.text(`Période : ${moisNoms[quittance.mois]} ${quittance.annee}`, margin + 5, yBien);
+        yBien += 6;
+        doc.text(`Bien loué : ${bien.nom || 'Non renseigné'}`, margin + 5, yBien);
+        if (bien.adresse) {
+            yBien += 6;
+            doc.text(`Adresse : ${bien.adresse}`, margin + 5, yBien);
+        }
+        if (contrat.numero_chambre) {
+            yBien += 6;
+            doc.text(`Logement : ${contrat.numero_chambre}`, margin + 5, yBien);
+        }
+
+        y += bienHeight + 12;
+
+        // Carte Détail des montants avec bordure bleue
+        doc.setDrawColor(...primaryColor);
+        doc.setLineWidth(0.5);
+        doc.setFillColor(255, 255, 255);
+        doc.roundedRect(margin, y, pageWidth - 2 * margin, 42, 3, 3, 'FD');
+
+        doc.setTextColor(...primaryColor);
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.text('DÉTAIL DES MONTANTS', margin + 5, y + 7);
+
+        doc.setTextColor(...darkColor);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Loyer', margin + 5, y + 16);
+        doc.text(`${quittance.montant_loyer.toFixed(2)} €`, pageWidth - margin - 5, y + 16, { align: 'right' });
+
+        doc.text('Charges', margin + 5, y + 24);
+        doc.text(`${quittance.montant_charges.toFixed(2)} €`, pageWidth - margin - 5, y + 24, { align: 'right' });
+
+        // Ligne de séparation
+        doc.setDrawColor(...lightGray);
+        doc.line(margin + 5, y + 28, pageWidth - margin - 5, y + 28);
+
+        // Total en vert
+        doc.setTextColor(...successColor);
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('TOTAL', margin + 5, y + 36);
+        doc.text(`${quittance.montant_total.toFixed(2)} €`, pageWidth - margin - 5, y + 36, { align: 'right' });
+
+        y += 52;
+        doc.setTextColor(...darkColor);
+
+        // Informations de paiement
+        if (quittance.date_paiement || quittance.mode_paiement) {
+            const paiementHeight = (quittance.date_paiement && quittance.mode_paiement) ? 28 : 22;
+            doc.setFillColor(...lightGray);
+            doc.roundedRect(margin, y, pageWidth - 2 * margin, paiementHeight, 3, 3, 'F');
+
+            doc.setTextColor(...primaryColor);
+            doc.setFontSize(11);
+            doc.setFont('helvetica', 'bold');
+            doc.text('INFORMATIONS DE PAIEMENT', margin + 5, y + 7);
+
+            doc.setTextColor(...darkColor);
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'normal');
+            let yPaiement = y + 14;
+            if (quittance.date_paiement) {
+                const datePaiement = new Date(quittance.date_paiement).toLocaleDateString('fr-FR');
+                doc.text(`Date de paiement : ${datePaiement}`, margin + 5, yPaiement);
+                yPaiement += 6;
+            }
+            if (quittance.mode_paiement) {
+                doc.text(`Mode de paiement : ${quittance.mode_paiement}`, margin + 5, yPaiement);
+            }
+            y += paiementHeight + 10;
+        }
+
+        // Observations
+        if (quittance.observations) {
+            const splitObs = doc.splitTextToSize(quittance.observations, pageWidth - 2 * margin - 10);
+            const obsHeight = 14 + (splitObs.length * 5);
+
+            doc.setFillColor(...lightGray);
+            doc.roundedRect(margin, y, pageWidth - 2 * margin, obsHeight, 3, 3, 'F');
+
+            doc.setTextColor(...primaryColor);
+            doc.setFontSize(11);
+            doc.setFont('helvetica', 'bold');
+            doc.text('OBSERVATIONS', margin + 5, y + 7);
+
+            doc.setTextColor(...darkColor);
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'normal');
+            doc.text(splitObs, margin + 5, y + 14);
+
+            y += obsHeight + 10;
+        }
+
+        // Texte légal avec fond bleu clair
+        y += 5;
+        const texteLegal = 'Le présent document certifie que le locataire a réglé la totalité du loyer et des charges pour la période indiquée ci-dessus.';
+        const splitLegal = doc.splitTextToSize(texteLegal, pageWidth - 2 * margin - 10);
+        const legalHeight = 8 + (splitLegal.length * 5);
+
+        doc.setFillColor(239, 246, 255); // Bleu très clair
+        doc.roundedRect(margin, y, pageWidth - 2 * margin, legalHeight, 3, 3, 'F');
+
+        doc.setTextColor(...primaryColor);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'italic');
+        doc.text(splitLegal, margin + 5, y + 6);
+
+        y += legalHeight + 15;
+        doc.setTextColor(...darkColor);
+
+        // Date et signature
+        const aujourdhui = new Date().toLocaleDateString('fr-FR');
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Fait à REDON, le ${aujourdhui}`, margin, y);
+        y += 12;
+
+        doc.setTextColor(...primaryColor);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Signature du bailleur', margin, y);
+        y += 8;
+
+        doc.setDrawColor(...primaryColor);
+        doc.setLineWidth(0.5);
+        doc.line(margin, y, margin + 60, y);
+
+        // Pied de page avec bandeau bleu
+        doc.setFillColor(...primaryColor);
+        doc.rect(0, pageHeight - 10, pageWidth, 10, 'F');
+
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.text('SARL ALCAYAMA - Document généré automatiquement', pageWidth / 2, pageHeight - 4, { align: 'center' });
+
+        // Télécharger
+        doc.save(`quittance-${moisNoms[quittance.mois]}-${quittance.annee}-${contrat.nom_locataire}.pdf`);
+
+        hideLoading();
+        showMessage('PDF généré avec succès', 'success');
+
+    } catch (error) {
+        console.error('Erreur:', error);
+        hideLoading();
+        showMessage('Erreur lors de la génération du PDF', 'error');
+    }
+};
+
+// Envoyer une quittance par email
+window.sendQuittanceEmail = async (quittanceId) => {
+    try {
+        showLoading();
+
+        // Récupérer les données de la quittance
+        const response = await fetch(`/api/quittances/${quittanceId}`);
+        const data = await response.json();
+        const quittance = data.quittance;
+
+        if (!quittance) {
+            showMessage('Quittance non trouvée', 'error');
+            hideLoading();
+            return;
+        }
+
+        const contrat = quittance.contrats;
+        const emailLocataire = contrat.email_locataire;
+
+        if (!emailLocataire) {
+            hideLoading();
+            showMessage('Aucune adresse email associée à ce contrat', 'error');
+            return;
+        }
+
+        hideLoading();
+
+        // Demander confirmation
+        const moisNoms = ['', 'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+        const confirmed = await showConfirmModal(
+            'Envoyer la quittance par email ?',
+            `La quittance de ${moisNoms[quittance.mois]} ${quittance.annee} sera envoyée à ${emailLocataire}`,
+            'Oui, envoyer',
+            'btn-success'
+        );
+
+        if (!confirmed) return;
+
+        // Envoyer l'email
+        showLoading();
+        const sendResponse = await fetch(`/api/quittances/${quittanceId}/send`, {
+            method: 'POST'
+        });
+
+        const sendData = await sendResponse.json();
+
+        if (!sendResponse.ok) {
+            throw new Error(sendData.error || 'Erreur lors de l\'envoi');
+        }
+
+        hideLoading();
+        showMessage('Quittance envoyée par email avec succès !', 'success');
+
+    } catch (error) {
+        console.error('Erreur:', error);
+        hideLoading();
+        showMessage(error.message || 'Erreur lors de l\'envoi de l\'email', 'error');
+    }
+};
+
+// ====== ADMINISTRATEURS GLOBAUX ======
+
+// Ouvrir le modal des paramètres
+window.openSettingsModal = async () => {
+    const modal = document.getElementById('settings-modal');
+    modal.style.display = 'flex';
+    await loadAdministrateurs();
+};
+
+window.closeSettingsModal = () => {
+    document.getElementById('settings-modal').style.display = 'none';
+    document.getElementById('admin-email-input').value = '';
+};
+
+// Charger la liste des administrateurs
+async function loadAdministrateurs() {
+    if (!currentUser || !currentUser.id) return;
+
+    try {
+        const response = await fetch(`/api/proprietaires/${currentUser.id}/administrateurs`);
+        const data = await response.json();
+
+        const container = document.getElementById('administrateurs-list');
+
+        if (!data.administrateurs || data.administrateurs.length === 0) {
+            container.innerHTML = '<p class="empty-state">Aucun administrateur. Vous êtes le seul à gérer ces biens.</p>';
+            return;
+        }
+
+        container.innerHTML = data.administrateurs.map(admin => `
+            <div class="collaborateur-item">
+                <div class="collaborateur-info">
+                    <i class="fas fa-user-shield"></i>
+                    <div>
+                        <strong>${admin.utilisateur.nom || admin.utilisateur.email}</strong>
+                        <small>${admin.utilisateur.email}</small>
+                        <span class="badge badge-administrateur">Administrateur</span>
+                    </div>
+                </div>
+                <button class="btn-danger-small" onclick="revoquerAdministrateur('${admin.id}')">
+                    <i class="fas fa-user-times"></i> Révoquer
+                </button>
+            </div>
+        `).join('');
+
+    } catch (error) {
+        console.error('Erreur lors du chargement des administrateurs:', error);
+        showMessage('Erreur lors du chargement des administrateurs', 'error');
+    }
+}
+
+// Ajouter un administrateur
+window.ajouterAdministrateur = async () => {
+    const email = document.getElementById('admin-email-input').value.trim();
+
+    if (!email) {
+        showMessage('Veuillez entrer un email', 'error');
+        return;
+    }
+
+    try {
+        showLoading();
+
+        const response = await fetch(`/api/proprietaires/${currentUser.id}/administrateurs`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ utilisateurEmail: email })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Erreur lors de l\'ajout');
+        }
+
+        showMessage('Administrateur ajouté avec succès', 'success');
+        document.getElementById('admin-email-input').value = '';
+        await loadAdministrateurs();
+
+    } catch (error) {
+        console.error('Erreur:', error);
+        showMessage(error.message, 'error');
+    } finally {
+        hideLoading();
+    }
+};
+
+// Révoquer un administrateur
+window.revoquerAdministrateur = async (adminId) => {
+    const confirmed = await showConfirmModal(
+        'Révoquer l\'accès administrateur ?',
+        'Cet utilisateur n\'aura plus accès à vos biens.',
+        'Oui, révoquer',
+        'btn-danger'
+    );
+
+    if (!confirmed) return;
+
+    try {
+        showLoading();
+
+        const response = await fetch(`/api/administrateurs/${adminId}`, {
+            method: 'DELETE'
+        });
+
+        if (!response.ok) throw new Error('Erreur lors de la révocation');
+
+        showMessage('Administrateur révoqué', 'success');
+        await loadAdministrateurs();
+
+    } catch (error) {
+        console.error('Erreur:', error);
+        showMessage(error.message, 'error');
     } finally {
         hideLoading();
     }

@@ -43,7 +43,10 @@
     <div id="biens-section" class="section hidden">
         <nav class="navbar">
             <h1>Mes Biens Immobiliers</h1>
-            <div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <button id="settings-btn" class="btn-secondary" title="Paramètres">
+                    <i class="fas fa-cog"></i> Paramètres
+                </button>
                 <span id="user-name"></span>
                 <button id="logout-btn" class="btn-secondary">Déconnexion</button>
             </div>
@@ -90,10 +93,6 @@
         <nav class="navbar">
             <button id="back-btn" class="btn-secondary">← Retour</button>
             <h1 id="bien-name"></h1>
-            <div>
-                <button id="demarrer-etat-btn" class="btn-success">🚀 Démarrer un état des lieux</button>
-                <button id="generate-pdf-btn" class="btn-secondary">📄 PDF du template</button>
-            </div>
         </nav>
 
         <div class="container">
@@ -110,13 +109,13 @@
                 <div id="contrat-actif-container"></div>
             </div>
 
-            <!-- Section Photos -->
-            <div class="photos-section">
+            <!-- Section Quittances de loyer -->
+            <div class="quittances-section">
                 <div class="section-header-with-action">
-                    <h3>📸 Photos du bien</h3>
-                    <button id="add-photo-btn" class="btn-primary">+ Ajouter une photo</button>
+                    <h3>🧾 Quittances de loyer</h3>
+                    <button id="create-quittance-btn" class="btn-success">+ Générer une quittance</button>
                 </div>
-                <div id="photos-container" class="photos-grid"></div>
+                <div id="quittances-container" class="quittances-list"></div>
             </div>
 
             <!-- Section Archive Documents -->
@@ -141,9 +140,45 @@
                 </div>
             </div>
 
-            <!-- Tableau de l'état des lieux (Template) -->
+            <!-- État des lieux -->
+            <div class="template-etat-section">
+                <div class="section-header-with-action">
+                    <h3>📝 État des lieux</h3>
+                    <div>
+                        <button id="demarrer-etat-btn" class="btn-success">🚀 Démarrer</button>
+                        <button id="edit-template-btn" class="btn-primary">✏️ Modifier le template</button>
+                    </div>
+                </div>
+                <div id="template-items-list" class="template-items-compact">
+                    <p class="empty-state">Aucun élément configuré</p>
+                </div>
+            </div>
+
+            <!-- Section Photos -->
+            <div class="photos-section">
+                <div class="section-header-with-action">
+                    <h3>📸 Photos du bien</h3>
+                    <button id="add-photo-btn" class="btn-primary">+ Ajouter une photo</button>
+                </div>
+                <div id="photos-container" class="photos-grid"></div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Section Édition du Template -->
+    <div id="template-edit-section" class="section hidden">
+        <nav class="navbar">
+            <button id="back-from-template-btn" class="btn-secondary">← Retour au bien</button>
+            <h1>📝 Édition du Template d'État des Lieux</h1>
+            <button id="save-template-btn" class="btn-success">💾 Sauvegarder</button>
+        </nav>
+
+        <div class="container">
             <div class="etat-lieux-section">
-                <h3>Template de l'état des lieux</h3>
+                <p class="template-description">
+                    Configurez ici les sections et éléments qui seront vérifiés lors de chaque état des lieux.
+                </p>
 
                 <!-- Ajout d'objets et sections -->
                 <div class="add-objet-inline">
@@ -155,34 +190,6 @@
 
                 <div id="etat-container">
                     <p id="empty-message" class="empty-state hidden">Aucun élément. Ajoutez des sections et des éléments pour créer l'état des lieux.</p>
-                </div>
-            </div>
-
-            <!-- Modal pour ajouter une section -->
-            <div id="section-modal" class="modal hidden">
-                <div class="modal-content">
-                    <h3>Nouvelle Section</h3>
-                    <input type="text" id="section-nom" placeholder="Nom de la section (ex: Salle de bain, Salon...)">
-                    <div class="modal-actions">
-                        <button id="save-section-btn" class="btn-primary">Créer</button>
-                        <button class="close-modal btn-secondary">Annuler</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Modal pour ajouter un objet -->
-            <div id="objet-modal" class="modal hidden">
-                <div class="modal-content">
-                    <h3>Nouvel Élément</h3>
-                    <input type="text" id="objet-nom" placeholder="Nom de l'élément">
-                    <input type="text" id="objet-description" placeholder="Description (optionnel)">
-                    <select id="objet-section">
-                        <option value="">Sans section</option>
-                    </select>
-                    <div class="modal-actions">
-                        <button id="save-objet-btn" class="btn-primary">Créer</button>
-                        <button class="close-modal btn-secondary">Annuler</button>
-                    </div>
                 </div>
             </div>
         </div>
@@ -300,28 +307,28 @@
                 </div>
 
                 <div class="form-group full-width">
-                    <label>Adresse du locataire</label>
-                    <input type="text" id="contrat-adresse-locataire">
+                    <label>Email du locataire</label>
+                    <input type="email" id="contrat-email">
                 </div>
 
                 <div class="form-group">
-                    <label>Date de début</label>
-                    <input type="date" id="contrat-date-debut">
+                    <label>Numéro de la chambre</label>
+                    <input type="text" id="contrat-numero-chambre" placeholder="Ex: Chambre 1">
                 </div>
 
                 <div class="form-group">
-                    <label>Date de fin</label>
-                    <input type="date" id="contrat-date-fin">
+                    <label>Date de début *</label>
+                    <input type="date" id="contrat-date-debut" required>
                 </div>
 
                 <div class="form-group">
-                    <label>Loyer mensuel (€)</label>
-                    <input type="number" id="contrat-loyer" step="0.01">
+                    <label>Date de fin *</label>
+                    <input type="date" id="contrat-date-fin" required>
                 </div>
 
                 <div class="form-group">
-                    <label>Charges (€)</label>
-                    <input type="number" id="contrat-charges" step="0.01">
+                    <label>Loyer TTC (charges comprises) (€) *</label>
+                    <input type="number" id="contrat-loyer" step="0.01" required>
                 </div>
 
                 <div class="form-group">
@@ -337,8 +344,164 @@
         </div>
     </div>
 
+    <!-- Modal pour créer une quittance -->
+    <div id="quittance-modal" class="modal hidden">
+        <div class="modal-content modal-large">
+            <h3>Générer une quittance de loyer</h3>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Contrat *</label>
+                    <select id="quittance-contrat" required>
+                        <option value="">Sélectionner un contrat</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Mois *</label>
+                    <select id="quittance-mois" required>
+                        <option value="1">Janvier</option>
+                        <option value="2">Février</option>
+                        <option value="3">Mars</option>
+                        <option value="4">Avril</option>
+                        <option value="5">Mai</option>
+                        <option value="6">Juin</option>
+                        <option value="7">Juillet</option>
+                        <option value="8">Août</option>
+                        <option value="9">Septembre</option>
+                        <option value="10">Octobre</option>
+                        <option value="11">Novembre</option>
+                        <option value="12">Décembre</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Année *</label>
+                    <input type="number" id="quittance-annee" required min="2020" max="2100">
+                </div>
+
+                <div class="form-group">
+                    <label>Montant du loyer (€) *</label>
+                    <input type="number" id="quittance-loyer" step="0.01" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Montant des charges (€)</label>
+                    <input type="number" id="quittance-charges" step="0.01" value="0">
+                </div>
+
+                <div class="form-group">
+                    <label>Date de paiement</label>
+                    <input type="date" id="quittance-date-paiement">
+                </div>
+
+                <div class="form-group">
+                    <label>Mode de paiement</label>
+                    <select id="quittance-mode-paiement">
+                        <option value="Virement bancaire">Virement bancaire</option>
+                        <option value="Chèque">Chèque</option>
+                        <option value="Espèces">Espèces</option>
+                        <option value="Prélèvement automatique">Prélèvement automatique</option>
+                    </select>
+                </div>
+
+                <div class="form-group full-width">
+                    <label>Observations</label>
+                    <textarea id="quittance-observations" rows="3" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px;"></textarea>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button id="save-quittance-btn" class="btn-primary">Créer la quittance</button>
+                <button class="close-modal btn-secondary">Annuler</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de confirmation de suppression -->
+    <div id="confirm-delete-modal" class="modal hidden">
+        <div class="modal-content confirm-modal">
+            <div class="confirm-modal-icon">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <h3 id="confirm-modal-title">Confirmer la suppression</h3>
+            <p id="confirm-modal-message">Êtes-vous sûr de vouloir supprimer cet élément ?</p>
+            <div class="modal-actions">
+                <button id="confirm-delete-btn" class="btn-danger">Supprimer</button>
+                <button id="cancel-delete-btn" class="btn-secondary">Annuler</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals globaux (accessibles depuis toutes les sections) -->
+    <!-- Modal pour ajouter une section -->
+    <div id="section-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Nouvelle Section</h3>
+            <input type="text" id="section-nom" placeholder="Nom de la section (ex: Salle de bain, Salon...)">
+            <div class="modal-actions">
+                <button id="save-section-btn" class="btn-primary">Créer</button>
+                <button class="close-modal btn-secondary">Annuler</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal pour ajouter un objet -->
+    <div id="objet-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Nouvel Élément</h3>
+            <input type="text" id="objet-nom" placeholder="Nom de l'élément">
+            <input type="text" id="objet-description" placeholder="Description (optionnel)">
+            <select id="objet-section">
+                <option value="">Sans section</option>
+            </select>
+            <div class="modal-actions">
+                <button id="save-objet-btn" class="btn-primary">Créer</button>
+                <button class="close-modal btn-secondary">Annuler</button>
+            </div>
+        </div>
+    </div>
+
     <div id="message" class="message hidden"></div>
     <div id="loading" class="loading hidden">Chargement...</div>
+
+    <!-- Modal Paramètres - Gestion des Administrateurs -->
+    <div id="settings-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3><i class="fas fa-cog"></i> Paramètres</h3>
+                <button class="modal-close" onclick="closeSettingsModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <h4 style="margin-bottom: 16px;">👥 Administrateurs</h4>
+                <p style="color: #64748B; font-size: 0.875rem; margin-bottom: 20px;">
+                    Les administrateurs ont accès complet à tous vos biens et peuvent gérer l'ensemble de votre patrimoine.
+                </p>
+
+                <!-- Liste des administrateurs -->
+                <div id="administrateurs-list" style="margin-bottom: 24px;">
+                    <!-- Sera rempli dynamiquement -->
+                </div>
+
+                <!-- Formulaire d'ajout -->
+                <div style="border-top: 1px solid #E2E8F0; padding-top: 20px;">
+                    <h5 style="margin-bottom: 12px;">Ajouter un administrateur</h5>
+                    <div style="display: flex; gap: 12px;">
+                        <input
+                            type="email"
+                            id="admin-email-input"
+                            class="form-control"
+                            placeholder="email@exemple.com"
+                            style="flex: 1;"
+                        >
+                        <button onclick="ajouterAdministrateur()" class="btn-success">
+                            <i class="fas fa-user-plus"></i> Ajouter
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="app.js"></script>

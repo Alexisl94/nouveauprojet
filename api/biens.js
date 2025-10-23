@@ -703,13 +703,13 @@ export async function creerEtatDesLieux(req, res) {
             .order('ordre');
 
         res.json({
-            etatDesLieux: {
+            etat: {
                 id: etatDesLieux.id,
                 type: etatDesLieux.type,
                 locataire: etatDesLieux.locataire,
                 etatEntreeId: etatDesLieux.etat_entree_id,
                 dateCreation: etatDesLieux.date_creation,
-                objets: objetsEtat || []
+                etat_objets: objetsEtat || []
             }
         });
     } catch (error) {
@@ -734,7 +734,7 @@ export async function obtenirEtatsDesLieux(req, res) {
             return res.status(500).json({ error: 'Erreur serveur' });
         }
 
-        res.json({ etatsDesLieux: etatsDesLieux || [] });
+        res.json({ etats: etatsDesLieux || [] });
     } catch (error) {
         console.error('Erreur lors de la récupération des états des lieux:', error);
         res.status(500).json({ error: 'Erreur serveur' });
@@ -772,14 +772,15 @@ export async function obtenirEtatDesLieux(req, res) {
             .order('ordre');
 
         res.json({
-            etatDesLieux: {
+            etat: {
                 id: etatDesLieux.id,
                 type: etatDesLieux.type,
                 locataire: etatDesLieux.locataire,
+                date: etatDesLieux.date_creation,
                 etatEntreeId: etatDesLieux.etat_entree_id,
                 dateCreation: etatDesLieux.date_creation,
                 sections: sections || [],
-                objets: objets || []
+                etat_objets: objets || []
             }
         });
     } catch (error) {
@@ -794,12 +795,16 @@ export async function mettreAJourObjetEtatDesLieux(req, res) {
         const { bienId, etatId, objetId } = req.params;
         const { entree, sortie, note, commentaires } = req.body;
 
+        console.log('Mise à jour objet état:', { bienId, etatId, objetId, updates: { entree, sortie, note, commentaires } });
+
         const updates = {};
         if (entree !== undefined) updates.entree = entree;
         if (sortie !== undefined) updates.sortie = sortie;
         if (note !== undefined) updates.note = note;
         if (commentaires !== undefined) updates.commentaires = commentaires;
 
+        // Chercher d'abord l'objet dans objets_etat_des_lieux
+        // L'objetId peut être soit l'id de l'objet_etat_des_lieux, soit l'objet_id original
         const { data: objet, error } = await supabase
             .from('objets_etat_des_lieux')
             .update(updates)
@@ -809,10 +814,26 @@ export async function mettreAJourObjetEtatDesLieux(req, res) {
             .single();
 
         if (error || !objet) {
-            console.error('Erreur Supabase:', error);
-            return res.status(404).json({ error: 'Objet non trouvé' });
+            console.error('Erreur Supabase (recherche par id):', error);
+            // Essayer avec objet_id
+            const { data: objetAlt, error: errorAlt } = await supabase
+                .from('objets_etat_des_lieux')
+                .update(updates)
+                .eq('objet_id', objetId)
+                .eq('etat_des_lieux_id', etatId)
+                .select()
+                .single();
+
+            if (errorAlt || !objetAlt) {
+                console.error('Erreur Supabase (recherche par objet_id):', errorAlt);
+                return res.status(404).json({ error: 'Objet non trouvé' });
+            }
+
+            console.log('Objet mis à jour (par objet_id):', objetAlt);
+            return res.json({ objet: objetAlt });
         }
 
+        console.log('Objet mis à jour (par id):', objet);
         res.json({ objet });
     } catch (error) {
         console.error('Erreur lors de la mise à jour:', error);
@@ -863,6 +884,36 @@ export async function supprimerEtatDesLieux(req, res) {
         res.json({ success: true });
     } catch (error) {
         console.error('Erreur lors de la suppression de l\'état des lieux:', error);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+}
+
+// Marquer un état des lieux comme terminé
+export async function terminerEtatDesLieux(req, res) {
+    try {
+        const { bienId, etatId } = req.params;
+
+        // Mettre à jour le champ termine
+        const { data, error } = await supabase
+            .from('etats_des_lieux')
+            .update({ termine: true })
+            .eq('id', etatId)
+            .eq('bien_id', bienId)
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Erreur Supabase:', error);
+            return res.status(500).json({ error: 'Erreur serveur' });
+        }
+
+        if (!data) {
+            return res.status(404).json({ error: 'État des lieux non trouvé' });
+        }
+
+        res.json({ success: true, etat: data });
+    } catch (error) {
+        console.error('Erreur lors de la finalisation de l\'état des lieux:', error);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 }
