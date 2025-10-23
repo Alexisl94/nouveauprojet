@@ -233,6 +233,7 @@ async function loadBiens() {
         const response = await fetch(`/api/biens?proprietaireId=${currentUser.id}`);
         const data = await response.json();
         displayBiens(data.biens);
+        updateDashboard(data.biens);
     } catch (error) {
         showMessage('Erreur de chargement des biens', 'error');
     } finally {
@@ -273,6 +274,48 @@ function displayBiens(biens) {
         `;
         biensList.appendChild(div);
     });
+}
+
+// Mettre à jour le dashboard avec les métriques
+function updateDashboard(biens) {
+    const totalBiens = biens.length;
+    const biensOccupes = biens.filter(bien => bien.locataireActuel).length;
+    const biensDisponibles = totalBiens - biensOccupes;
+    const tauxOccupation = totalBiens > 0 ? Math.round((biensOccupes / totalBiens) * 100) : 0;
+
+    // Calculer le total des loyers
+    const totalLoyers = biens.reduce((sum, bien) => {
+        if (bien.locataireActuel && bien.locataireActuel.loyer) {
+            return sum + parseFloat(bien.locataireActuel.loyer);
+        }
+        return sum;
+    }, 0);
+
+    // Mettre à jour les éléments du dashboard
+    document.getElementById('dashboard-occupied').textContent = biensOccupes;
+    document.getElementById('dashboard-total').textContent = totalBiens;
+    document.getElementById('dashboard-percentage').textContent = tauxOccupation + '%';
+    document.getElementById('dashboard-progress').style.width = tauxOccupation + '%';
+
+    // Mettre à jour le statut
+    const statusElement = document.getElementById('dashboard-status');
+    if (totalBiens === 0) {
+        statusElement.textContent = 'Aucun bien';
+    } else if (tauxOccupation === 100) {
+        statusElement.textContent = 'Tous loués';
+    } else if (tauxOccupation === 0) {
+        statusElement.textContent = 'Tous disponibles';
+    } else {
+        statusElement.textContent = `${biensDisponibles} disponible${biensDisponibles > 1 ? 's' : ''}`;
+    }
+
+    // Mettre à jour les revenus
+    document.getElementById('dashboard-revenue').textContent = totalLoyers.toFixed(0);
+    document.getElementById('dashboard-active-contracts').textContent = biensOccupes;
+
+    // Mettre à jour la vue rapide
+    document.getElementById('dashboard-total-biens').textContent = totalBiens;
+    document.getElementById('dashboard-available').textContent = biensDisponibles;
 }
 
 window.editBien = (id, nom, adresse) => {

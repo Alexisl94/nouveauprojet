@@ -101,7 +101,7 @@ export async function obtenirBiens(req, res) {
             // Récupérer le contrat actif (non archivé)
             const { data: contratActif } = await supabase
                 .from('contrats')
-                .select('nom_locataire, prenom_locataire')
+                .select('nom_locataire, prenom_locataire, loyer_ttc')
                 .eq('bien_id', bien.id)
                 .eq('archive', false)
                 .order('date_debut', { ascending: false })
@@ -119,7 +119,8 @@ export async function obtenirBiens(req, res) {
                 etatsDesLieux: etatsDesLieux || [],
                 locataireActuel: contratActif ? {
                     nom: contratActif.nom_locataire,
-                    prenom: contratActif.prenom_locataire
+                    prenom: contratActif.prenom_locataire,
+                    loyer: contratActif.loyer_ttc
                 } : null
             };
         }));
