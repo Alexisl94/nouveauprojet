@@ -1,4 +1,8 @@
 import { supabase } from '../lib/supabase.js';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'votre-secret-jwt-a-changer';
 
 // Route d'inscription
 export async function register(req, res) {
@@ -10,8 +14,8 @@ export async function register(req, res) {
         }
 
         // Vérifier si l'email existe déjà
-        const { data: existingUser, error: checkError } = await supabase
-            .from('proprietaires')
+        const { data: existingUser } = await supabase
+            .from('utilisateurs')
             .select('id')
             .eq('email', email)
             .single();
@@ -20,13 +24,17 @@ export async function register(req, res) {
             return res.status(400).json({ error: 'Cet email est déjà utilisé' });
         }
 
-        // Créer le nouveau propriétaire
-        const { data: proprietaire, error } = await supabase
-            .from('proprietaires')
+        // Hasher le mot de passe
+        const hashedPassword = await bcrypt.hash(motDePasse, 10);
+
+        // Créer le nouvel utilisateur (par défaut en tant que propriétaire)
+        const { data: utilisateur, error } = await supabase
+            .from('utilisateurs')
             .insert([{
                 email,
                 nom,
-                mot_de_passe: motDePasse // Note: En production, il faudrait hasher le mot de passe
+                mot_de_passe_hash: hashedPassword,
+                role: 'proprietaire'
             }])
             .select()
             .single();
@@ -36,26 +44,31 @@ export async function register(req, res) {
             return res.status(500).json({ error: 'Erreur lors de l\'inscription' });
         }
 
-        // Créer aussi l'utilisateur correspondant dans la table utilisateurs
-        const { data: utilisateur, error: userError } = await supabase
-            .from('utilisateurs')
+        // Créer aussi dans la table proprietaires pour compatibilité
+        await supabase
+            .from('proprietaires')
             .insert([{
                 email,
-                nom
-            }])
-            .select()
-            .single();
+                nom,
+                mot_de_passe: motDePasse // Pour compatibilité
+            }]);
 
-        if (userError) {
-            console.error('Erreur lors de la création de l\'utilisateur:', userError);
-        }
+        // Générer un token JWT
+        const token = jwt.sign(
+            { id: utilisateur.id, email: utilisateur.email, role: utilisateur.role },
+            JWT_SECRET,
+            { expiresIn: '7d' }
+        );
 
-        // Ne pas renvoyer le mot de passe
-        const { mot_de_passe: _, ...proprietaireSafe } = proprietaire;
+        // Ne pas renvoyer le hash du mot de passe
+        const { mot_de_passe_hash: _, ...utilisateurSafe } = utilisateur;
         res.json({
+            token,
+            user: utilisateurSafe,
+            // Pour compatibilité avec l'ancien code
             proprietaire: {
-                ...proprietaireSafe,
-                utilisateur_id: utilisateur?.id
+                ...utilisateurSafe,
+                utilisateur_id: utilisateur.id
             }
         });
     } catch (error) {
@@ -67,49 +80,47 @@ export async function register(req, res) {
 // Route de connexion
 export async function login(req, res) {
     try {
-        const { email, motDePasse } = req.body;
+        const { email, password, motDePasse } = req.body;
+        const passwordToCheck = password || motDePasse; // Support des deux formats
 
-        if (!email || !motDePasse) {
+        if (!email || !passwordToCheck) {
             return res.status(400).json({ error: 'Email et mot de passe requis' });
         }
 
-        const { data: proprietaire, error } = await supabase
-            .from('proprietaires')
+        // Récupérer l'utilisateur
+        const { data: utilisateur, error } = await supabase
+            .from('utilisateurs')
             .select('*')
             .eq('email', email)
-            .eq('mot_de_passe', motDePasse)
             .single();
 
-        if (error || !proprietaire) {
+        if (error || !utilisateur) {
             return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
         }
 
-        // Récupérer ou créer l'utilisateur correspondant
-        let { data: utilisateur } = await supabase
-            .from('utilisateurs')
-            .select('id')
-            .eq('email', email)
-            .single();
+        // Vérifier le mot de passe (hasher avec bcrypt)
+        const isPasswordValid = await bcrypt.compare(passwordToCheck, utilisateur.mot_de_passe_hash);
 
-        // Si l'utilisateur n'existe pas, le créer
-        if (!utilisateur) {
-            const { data: newUser } = await supabase
-                .from('utilisateurs')
-                .insert([{
-                    email: proprietaire.email,
-                    nom: proprietaire.nom
-                }])
-                .select()
-                .single();
-            utilisateur = newUser;
+        if (!isPasswordValid) {
+            return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
         }
 
-        // Ne pas renvoyer le mot de passe
-        const { mot_de_passe: _, ...proprietaireSafe } = proprietaire;
+        // Générer un token JWT
+        const token = jwt.sign(
+            { id: utilisateur.id, email: utilisateur.email, role: utilisateur.role },
+            JWT_SECRET,
+            { expiresIn: '7d' }
+        );
+
+        // Ne pas renvoyer le hash du mot de passe
+        const { mot_de_passe_hash: _, ...utilisateurSafe } = utilisateur;
         res.json({
+            token,
+            user: utilisateurSafe,
+            // Pour compatibilité avec l'ancien code
             proprietaire: {
-                ...proprietaireSafe,
-                utilisateur_id: utilisateur?.id
+                ...utilisateurSafe,
+                utilisateur_id: utilisateur.id
             }
         });
     } catch (error) {

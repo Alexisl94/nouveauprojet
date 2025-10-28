@@ -1,6 +1,62 @@
 import { supabase } from '../lib/supabase.js';
 import puppeteer from 'puppeteer';
 
+// Récupérer tous les contrats du propriétaire avec informations du bien et statut du locataire
+export async function obtenirTousLesContrats(req, res) {
+    try {
+        // Récupérer le proprietaireId depuis la query string
+        const { proprietaireId } = req.query;
+
+        if (!proprietaireId) {
+            return res.status(400).json({ error: 'proprietaireId requis' });
+        }
+
+        // Récupérer tous les contrats des biens du propriétaire avec les infos du bien
+        const { data: contrats, error } = await supabase
+            .from('contrats')
+            .select(`
+                *,
+                biens!inner (
+                    id,
+                    nom,
+                    adresse,
+                    proprietaire_id
+                )
+            `)
+            .eq('biens.proprietaire_id', proprietaireId)
+            .order('cree_le', { ascending: false });
+
+        if (error) {
+            console.error('Erreur Supabase:', error);
+            return res.status(500).json({ error: 'Erreur serveur' });
+        }
+
+        // Formatter les données pour le frontend
+        const contratsFormattes = (contrats || []).map(contrat => ({
+            id: contrat.id,
+            bien_id: contrat.bien_id,
+            bien_nom: contrat.biens?.nom || 'Bien inconnu',
+            locataire_nom: contrat.nom_locataire,
+            locataire_prenom: contrat.prenom_locataire,
+            locataire_email: contrat.email_locataire,
+            locataire_user_id: contrat.locataire_user_id,
+            date_debut: contrat.date_debut,
+            date_fin: contrat.date_fin,
+            loyer: contrat.loyer,
+            charges: contrat.charges,
+            depot_garantie: contrat.depot_garantie,
+            statut: contrat.actif ? 'actif' : 'terminé',
+            type: contrat.type,
+            numero_chambre: contrat.numero_chambre
+        }));
+
+        res.json({ contrats: contratsFormattes });
+    } catch (error) {
+        console.error('Erreur:', error);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+}
+
 // Récupérer tous les contrats d'un bien
 export async function obtenirContrats(req, res) {
     try {
@@ -369,14 +425,46 @@ export async function genererContratPDF(req, res) {
     }
 }
 
-// Archiver un contrat (désactiver)
+// Archiver un contrat (le déplacer dans les documents mais le garder actif)
 export async function archiverContrat(req, res) {
     try {
         const { contratId } = req.params;
 
         const { data: contrat, error } = await supabase
             .from('contrats')
-            .update({ actif: false })
+            .update({
+                archive: true,
+                actif: true,  // Le contrat reste actif (bien occupé)
+                termine: false  // Le contrat n'est pas terminé
+            })
+            .eq('id', contratId)
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Erreur Supabase:', error);
+            return res.status(500).json({ error: 'Erreur serveur' });
+        }
+
+        res.json({ contrat });
+    } catch (error) {
+        console.error('Erreur:', error);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+}
+
+// Terminer un contrat (le bien devient disponible et le contrat est archivé)
+export async function terminerContrat(req, res) {
+    try {
+        const { contratId } = req.params;
+
+        const { data: contrat, error } = await supabase
+            .from('contrats')
+            .update({
+                actif: false,  // Le contrat n'est plus actif (bien disponible)
+                archive: true,  // Le contrat est archivé
+                termine: true  // Le contrat est terminé
+            })
             .eq('id', contratId)
             .select()
             .single();

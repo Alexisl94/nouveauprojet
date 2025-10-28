@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestion des Contrats - PropManager</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css?v=7">
+</head>
+<body>
+    <div id="loading" class="loading hidden">Chargement...</div>
+    <div id="message" class="message hidden"></div>
+
+    <!-- Page de gestion des contrats -->
+    <div class="container">
+        <div class="header" style="margin-bottom: 32px;">
+            <div>
+                <h1>Gestion des Contrats</h1>
+                <p style="color: var(--text-secondary); margin-top: 8px;">Gérez vos contrats de location et invitez vos locataires</p>
+            </div>
+            <button class="btn-primary" onclick="window.location.href='/'">
+                <i class="fas fa-arrow-left"></i> Retour au dashboard
+            </button>
+        </div>
+
+        <!-- Liste des contrats -->
+        <div class="card">
+            <div class="card-header">
+                <h3>Contrats actifs</h3>
+            </div>
+            <div class="card-body">
+                <div id="contrats-list">
+                    <div class="loading-spinner">
+                        <div class="spinner"></div>
+                        <p>Chargement des contrats...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal d'invitation locataire -->
+    <div id="invitation-modal" class="modal hidden">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2>Inviter le locataire</h2>
+                <button class="close-modal" onclick="closeInvitationModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div id="invitation-info">
+                    <p style="color: var(--text-secondary); margin-bottom: 20px;">
+                        Le locataire recevra un email avec un lien pour créer son compte et accéder à son espace personnel.
+                    </p>
+
+                    <div style="background: var(--bg-secondary); padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+                        <div style="margin-bottom: 12px;">
+                            <strong>Contrat:</strong> <span id="modal-contrat-nom"></span>
+                        </div>
+                        <div style="margin-bottom: 12px;">
+                            <strong>Locataire:</strong> <span id="modal-locataire-nom"></span>
+                        </div>
+                        <div>
+                            <strong>Email:</strong> <span id="modal-locataire-email"></span>
+                        </div>
+                    </div>
+
+                    <div id="invitation-result" class="hidden"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeInvitationModal()">Annuler</button>
+                <button class="btn-primary" id="send-invitation-btn" onclick="sendInvitation()">
+                    <i class="fas fa-paper-plane"></i> Envoyer l'invitation
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .spinner {
+            border: 3px solid var(--border-primary);
+            border-top: 3px solid var(--primary-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-spinner {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .contrat-card {
+            border: 1px solid var(--border-primary);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            background: white;
+            transition: all 0.2s;
+        }
+
+        .contrat-card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .contrat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+
+        .contrat-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .contrat-subtitle {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .contrat-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .contrat-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .info-item i {
+            color: var(--primary-color);
+            width: 20px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge.success {
+            background: var(--bg-success);
+            color: var(--primary-color);
+        }
+
+        .badge.warning {
+            background: #fed7aa;
+            color: #ea580c;
+        }
+
+        .badge.info {
+            background: #dbeafe;
+            color: #2563eb;
+        }
+
+        .btn-invite {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-invite:hover {
+            background: #2d7a45;
+            transform: translateY(-2px);
+        }
+
+        .btn-invite:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-view {
+            padding: 8px 16px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-primary);
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-view:hover {
+            background: #e5e7eb;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .empty-state i {
+            font-size: 48px;
+            color: var(--border-primary);
+            margin-bottom: 16px;
+        }
+
+        .empty-state h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0 0 8px 0;
+        }
+
+        .empty-state p {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin: 0;
+        }
+
+        .success-message {
+            background: var(--bg-success);
+            color: var(--primary-color);
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+
+        .link-box {
+            background: var(--bg-secondary);
+            padding: 12px;
+            border-radius: 8px;
+            font-family: monospace;
+            word-break: break-all;
+            margin-top: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .link-box code {
+            flex: 1;
+            font-size: 13px;
+        }
+
+        .copy-btn {
+            padding: 6px 12px;
+            background: white;
+            border: 1px solid var(--border-primary);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        .copy-btn:hover {
+            background: var(--bg-secondary);
+        }
+    </style>
+
+    <script src="contrats.js?v=1"></script>
+</body>
+</html>

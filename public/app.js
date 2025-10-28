@@ -135,9 +135,25 @@ loginForm.addEventListener('submit', async (e) => {
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Erreur de connexion');
 
-        currentUser = data.proprietaire;
-        showBiensSection();
-        showMessage('Connexion réussie !');
+        // Stocker le token et les infos utilisateur
+        if (data.token) {
+            localStorage.setItem('token', data.token);
+        }
+        if (data.user) {
+            localStorage.setItem('user', JSON.stringify(data.user));
+        }
+
+        currentUser = data.proprietaire || data.user;
+
+        // Redirection basée sur le rôle
+        if (data.user && data.user.role === 'locataire') {
+            // Rediriger vers l'espace locataire
+            window.location.href = '/dashboard-locataire.html';
+        } else {
+            // Afficher l'interface propriétaire/admin
+            showBiensSection();
+            showMessage('Connexion réussie !');
+        }
     } catch (error) {
         showMessage(error.message, 'error');
     } finally {
@@ -182,11 +198,15 @@ logoutBtn.addEventListener('click', () => {
 });
 
 function showBiensSection() {
+    // Cacher la section auth
     authSection.classList.add('hidden');
-    biensSection.classList.remove('hidden');
-    bienDetailSection.classList.add('hidden');
-    userNameSpan.textContent = currentUser.nom;
-    loadBiens();
+
+    // Initialiser la nouvelle sidebar
+    initSidebar();
+
+    // Cacher les anciennes sections (gardées pour compatibilité avec les modals)
+    if (biensSection) biensSection.classList.add('hidden');
+    if (bienDetailSection) bienDetailSection.classList.add('hidden');
 }
 
 // Gestion des biens
@@ -232,10 +252,17 @@ async function loadBiens() {
         // Charger les biens du propriétaire connecté
         const response = await fetch(`/api/biens?proprietaireId=${currentUser.id}`);
         const data = await response.json();
-        displayBiens(data.biens);
-        updateDashboard(data.biens);
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Erreur lors du chargement des biens');
+        }
+
+        const biens = data.biens || [];
+        displayBiens(biens);
+        updateDashboard(biens);
     } catch (error) {
-        showMessage('Erreur de chargement des biens', 'error');
+        console.error('Erreur dans loadBiens:', error);
+        showMessage(error.message || 'Erreur de chargement des biens', 'error');
     } finally {
         hideLoading();
     }
@@ -303,31 +330,52 @@ function updateDashboard(biens) {
 
     console.log('Total loyers:', totalLoyers);
 
+    // Fonction helper pour mettre à jour un élément de façon sécurisée
+    const safeSetText = (id, text) => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.textContent = text;
+        } else {
+            console.warn(`Élément #${id} non trouvé dans le DOM`);
+        }
+    };
+
+    const safeSetStyle = (id, property, value) => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.style[property] = value;
+        } else {
+            console.warn(`Élément #${id} non trouvé dans le DOM`);
+        }
+    };
+
     // Mettre à jour les éléments du dashboard
-    document.getElementById('dashboard-occupied').textContent = biensOccupes;
-    document.getElementById('dashboard-total').textContent = totalBiens;
-    document.getElementById('dashboard-percentage').textContent = tauxOccupation + '%';
-    document.getElementById('dashboard-progress').style.width = tauxOccupation + '%';
+    safeSetText('dashboard-occupied', biensOccupes);
+    safeSetText('dashboard-total', totalBiens);
+    safeSetText('dashboard-percentage', tauxOccupation + '%');
+    safeSetStyle('dashboard-progress', 'width', tauxOccupation + '%');
 
     // Mettre à jour le statut
     const statusElement = document.getElementById('dashboard-status');
-    if (totalBiens === 0) {
-        statusElement.textContent = 'Aucun bien';
-    } else if (tauxOccupation === 100) {
-        statusElement.textContent = 'Tous loués';
-    } else if (tauxOccupation === 0) {
-        statusElement.textContent = 'Tous disponibles';
-    } else {
-        statusElement.textContent = `${biensDisponibles} disponible${biensDisponibles > 1 ? 's' : ''}`;
+    if (statusElement) {
+        if (totalBiens === 0) {
+            statusElement.textContent = 'Aucun bien';
+        } else if (tauxOccupation === 100) {
+            statusElement.textContent = 'Tous loués';
+        } else if (tauxOccupation === 0) {
+            statusElement.textContent = 'Tous disponibles';
+        } else {
+            statusElement.textContent = `${biensDisponibles} disponible${biensDisponibles > 1 ? 's' : ''}`;
+        }
     }
 
     // Mettre à jour les revenus
-    document.getElementById('dashboard-revenue').textContent = totalLoyers.toFixed(0);
-    document.getElementById('dashboard-active-contracts').textContent = biensOccupes;
+    safeSetText('dashboard-revenue', totalLoyers.toFixed(0));
+    safeSetText('dashboard-active-contracts', biensOccupes);
 
     // Mettre à jour la vue rapide
-    document.getElementById('dashboard-total-biens').textContent = totalBiens;
-    document.getElementById('dashboard-available').textContent = biensDisponibles;
+    safeSetText('dashboard-total-biens', totalBiens);
+    safeSetText('dashboard-available', biensDisponibles);
 
     console.log('=== updateDashboard terminé ===');
 }
@@ -434,10 +482,24 @@ window.openBienDetail = async (bienId) => {
         document.getElementById('bien-name').textContent = currentBien.nom;
         document.getElementById('bien-adresse-display').textContent = currentBien.adresse || 'Non renseignée';
 
+        // Nouveau comportement: garder la sidebar visible
+        const appSidebar = document.getElementById('app-sidebar');
+        const appContent = document.getElementById('app-content');
+
+        // Cacher toutes les autres sections
         biensSection.classList.add('hidden');
         etatsListSection.classList.add('hidden');
         etatDetailSection.classList.add('hidden');
         templateEditSection.classList.add('hidden');
+
+        // Si on est dans le nouveau layout (sidebar visible), vider app-content
+        if (appSidebar && !appSidebar.classList.contains('hidden')) {
+            appContent.innerHTML = '';
+            // Cacher le contenu dynamique de app-content pour laisser place à bien-detail-section
+            appContent.classList.add('hidden');
+        }
+
+        // Afficher la section de détail du bien
         bienDetailSection.classList.remove('hidden');
 
         // Charger le contrat actif, les documents archivés et les photos
@@ -456,7 +518,22 @@ window.openBienDetail = async (bienId) => {
 
 backBtn.addEventListener('click', () => {
     bienDetailSection.classList.add('hidden');
-    biensSection.classList.remove('hidden');
+
+    // Vérifier si on est dans le nouveau layout avec sidebar
+    const appSidebar = document.getElementById('app-sidebar');
+    const appContent = document.getElementById('app-content');
+
+    if (appSidebar && !appSidebar.classList.contains('hidden')) {
+        // Retour à la page Mes Biens dans le nouveau layout
+        appContent.classList.remove('hidden');
+        if (typeof navigateToPage === 'function') {
+            navigateToPage('biens');
+        }
+    } else {
+        // Ancien comportement
+        biensSection.classList.remove('hidden');
+    }
+
     currentBienId = null;
     currentBien = null;
 });
@@ -471,7 +548,9 @@ async function displayContratActif() {
         const data = await response.json();
         const contrats = data.contrats || [];
 
-        const contratActif = contrats.find(c => c.actif);
+        // Trouver le contrat actif et non archivé
+        // Si le champ archive n'existe pas (undefined/null), on considère que ce n'est pas archivé
+        const contratActif = contrats.find(c => c.actif && !c.archive);
 
         if (!contratActif) {
             container.innerHTML = '<div class="contrat-actif-empty">Aucun contrat en cours</div>';
@@ -507,8 +586,11 @@ async function displayContratActif() {
                 <button onclick="downloadContratPDF('${contratActif.id}')">
                     <i class="fas fa-download"></i> Télécharger PDF
                 </button>
-                <button onclick="archiverContrat('${contratActif.id}')">
+                <button onclick="archiverContrat('${contratActif.id}')" title="Archiver dans les documents (le bien reste occupé)">
                     <i class="fas fa-archive"></i> Archiver
+                </button>
+                <button onclick="terminerContrat('${contratActif.id}')" class="btn-danger" title="Terminer le contrat (le bien devient disponible)">
+                    <i class="fas fa-times-circle"></i> Terminer le contrat
                 </button>
             </div>
         `;
@@ -535,8 +617,9 @@ async function displayDocuments() {
         const contratsData = await contratsResponse.json();
         const contrats = contratsData.contrats || [];
 
-        // Ne garder que les contrats archivés (non actifs)
-        const contratsArchives = contrats.filter(c => !c.actif);
+        // Ne garder que les contrats archivés (archive = true)
+        // Ceci inclut à la fois les contrats archivés mais actifs, et les contrats terminés
+        const contratsArchives = contrats.filter(c => c.archive === true);
 
         // Afficher message si aucun document
         if (etats.length === 0 && contratsArchives.length === 0) {
@@ -2085,6 +2168,8 @@ saveContratBtn.addEventListener('click', async () => {
         closeModals();
         await displayContratActif();
         await displayDocuments();
+        // Recharger les biens pour mettre à jour le dashboard
+        await loadBiens();
     } catch (error) {
         console.error('Erreur:', error);
         showMessage('Erreur lors de la création du contrat', 'error');
@@ -2418,9 +2503,9 @@ window.downloadContratPDF = async (contratId) => {
     }
 };
 
-// Archiver un contrat
+// Archiver un contrat (le déplace dans documents mais reste actif)
 window.archiverContrat = async (contratId) => {
-    if (!confirm('Archiver ce contrat ? Il sera déplacé dans les documents archivés.')) return;
+    if (!confirm('Archiver ce contrat ? Il sera déplacé dans les documents mais le bien restera occupé.')) return;
 
     showLoading();
     try {
@@ -2434,9 +2519,36 @@ window.archiverContrat = async (contratId) => {
         showMessage('Contrat archivé');
         await displayContratActif();
         await displayDocuments();
+        // Le dashboard n'a pas besoin d'être rechargé car le contrat reste actif
+        // (le bien reste occupé même si le contrat est archivé)
     } catch (error) {
         console.error('Erreur:', error);
         showMessage('Erreur lors de l\'archivage', 'error');
+    } finally {
+        hideLoading();
+    }
+};
+
+// Terminer un contrat (le bien devient disponible et le contrat est archivé)
+window.terminerContrat = async (contratId) => {
+    if (!confirm('Terminer ce contrat ? Le bien deviendra disponible et le contrat sera archivé dans les documents.')) return;
+
+    showLoading();
+    try {
+        const response = await fetch(`/api/contrats/${contratId}/terminer`, {
+            method: 'PUT'
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error);
+
+        showMessage('Contrat terminé');
+        await displayContratActif();
+        await displayDocuments();
+        await loadBiens(); // Recharger pour mettre à jour le dashboard
+    } catch (error) {
+        console.error('Erreur:', error);
+        showMessage('Erreur lors de la terminaison du contrat', 'error');
     } finally {
         hideLoading();
     }
@@ -2470,6 +2582,168 @@ window.deleteContrat = async (contratId) => {
         hideLoading();
     }
 };
+
+// ==================== ACTIONS RAPIDES DASHBOARD ====================
+// Fonction pour sélectionner un bien et créer un contrat
+window.ouvrirCreationContrat = async () => {
+    try {
+        const response = await fetch(`/api/biens?proprietaireId=${currentUser.id}`);
+        const data = await response.json();
+        const biens = data.biens || [];
+
+        if (biens.length === 0) {
+            showMessage('Aucun bien disponible. Créez un bien d\'abord.', 'error');
+            return;
+        }
+
+        // Créer un modal de sélection
+        const bienId = await showBienSelector(biens, 'Sélectionnez un bien pour créer un contrat');
+        if (bienId) {
+            await openBienDetail(bienId);
+            // Attendre que le detail du bien soit chargé
+            setTimeout(() => {
+                const contratModal = document.getElementById('contrat-modal');
+                contratModal.classList.remove('hidden');
+            }, 100);
+        }
+    } catch (error) {
+        console.error('Erreur:', error);
+        showMessage('Erreur lors de l\'ouverture', 'error');
+    }
+};
+
+// Fonction pour sélectionner un bien et créer une quittance
+window.ouvrirCreationQuittance = async () => {
+    try {
+        const response = await fetch(`/api/biens?proprietaireId=${currentUser.id}`);
+        const data = await response.json();
+        const biens = data.biens || [];
+
+        if (biens.length === 0) {
+            showMessage('Aucun bien disponible. Créez un bien d\'abord.', 'error');
+            return;
+        }
+
+        // Créer un modal de sélection
+        const bienId = await showBienSelector(biens, 'Sélectionnez un bien pour créer une quittance');
+        if (bienId) {
+            await openBienDetail(bienId);
+            // Attendre que le detail du bien soit chargé
+            setTimeout(() => {
+                const quittanceModal = document.getElementById('quittance-modal');
+                quittanceModal.classList.remove('hidden');
+            }, 100);
+        }
+    } catch (error) {
+        console.error('Erreur:', error);
+        showMessage('Erreur lors de l\'ouverture', 'error');
+    }
+};
+
+// Fonction pour sélectionner un bien et démarrer un état des lieux
+window.ouvrirCreationEtat = async () => {
+    try {
+        const response = await fetch(`/api/biens?proprietaireId=${currentUser.id}`);
+        const data = await response.json();
+        const biens = data.biens || [];
+
+        if (biens.length === 0) {
+            showMessage('Aucun bien disponible. Créez un bien d\'abord.', 'error');
+            return;
+        }
+
+        // Créer un modal de sélection
+        const bienId = await showBienSelector(biens, 'Sélectionnez un bien pour démarrer un état des lieux');
+        if (bienId) {
+            await openBienDetail(bienId);
+            // Attendre que le detail du bien soit chargé
+            setTimeout(() => {
+                const demarrerEtatModal = document.getElementById('demarrer-etat-modal');
+                demarrerEtatModal.classList.remove('hidden');
+            }, 100);
+        }
+    } catch (error) {
+        console.error('Erreur:', error);
+        showMessage('Erreur lors de l\'ouverture', 'error');
+    }
+};
+
+// Fonction utilitaire pour afficher un sélecteur de bien
+function showBienSelector(biens, title) {
+    return new Promise((resolve) => {
+        // Créer le modal
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.style.display = 'flex';
+
+        const modalContent = document.createElement('div');
+        modalContent.className = 'modal-content';
+        modalContent.style.maxWidth = '500px';
+
+        modalContent.innerHTML = `
+            <div class="modal-header">
+                <h3>${title}</h3>
+            </div>
+            <div class="modal-body">
+                <div id="bien-selector-list" style="display: flex; flex-direction: column; gap: 12px;">
+                    ${biens.map(bien => `
+                        <button class="bien-selector-item" data-bien-id="${bien.id}" style="
+                            padding: 16px;
+                            background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(110, 231, 183, 0.05) 100%);
+                            border: 2px solid transparent;
+                            border-radius: 12px;
+                            cursor: pointer;
+                            text-align: left;
+                            transition: all 0.3s;
+                        ">
+                            <div style="font-weight: 600; margin-bottom: 4px;">${bien.nom}</div>
+                            <div style="font-size: 0.875rem; color: var(--text-mid);">${bien.adresse || 'Pas d\'adresse'}</div>
+                        </button>
+                    `).join('')}
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancel-bien-selector" class="btn-secondary">Annuler</button>
+            </div>
+        `;
+
+        modal.appendChild(modalContent);
+        document.body.appendChild(modal);
+
+        // Ajouter les événements
+        const bienButtons = modal.querySelectorAll('.bien-selector-item');
+        bienButtons.forEach(btn => {
+            btn.addEventListener('mouseenter', () => {
+                btn.style.borderColor = 'var(--primary-color)';
+                btn.style.background = 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(110, 231, 183, 0.1) 100%)';
+            });
+            btn.addEventListener('mouseleave', () => {
+                btn.style.borderColor = 'transparent';
+                btn.style.background = 'linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(110, 231, 183, 0.05) 100%)';
+            });
+            btn.addEventListener('click', () => {
+                const bienId = btn.getAttribute('data-bien-id');
+                document.body.removeChild(modal);
+                resolve(bienId);
+            });
+        });
+
+        const cancelBtn = modal.querySelector('#cancel-bien-selector');
+        cancelBtn.addEventListener('click', () => {
+            document.body.removeChild(modal);
+            resolve(null);
+        });
+
+        // Fermer en cliquant en dehors
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                document.body.removeChild(modal);
+                resolve(null);
+            }
+        });
+    });
+}
+
 // ==================== QUITTANCES ====================
 const createQuittanceBtn = document.getElementById('create-quittance-btn');
 const quittanceModal = document.getElementById('quittance-modal');
@@ -2965,18 +3239,196 @@ window.sendQuittanceEmail = async (quittanceId) => {
 // ====== ADMINISTRATEURS GLOBAUX ======
 
 // Ouvrir le modal des paramètres
+// Remplacé par la navigation vers la page paramètres
 window.openSettingsModal = async () => {
-    const modal = document.getElementById('settings-modal');
-    modal.style.display = 'flex';
-    await loadAdministrateurs();
+    openSettingsPage();
 };
+
+// Variable pour savoir si les event listeners sont déjà attachés
+let settingsEventListenersAttached = false;
+
+// Ouvrir la page paramètres
+async function openSettingsPage() {
+    // Cacher toutes les sections
+    document.querySelectorAll('.section').forEach(section => {
+        section.classList.add('hidden');
+    });
+
+    // Afficher la section paramètres
+    document.getElementById('settings-section').classList.remove('hidden');
+
+    // Mettre à jour le nom d'utilisateur
+    document.getElementById('user-name-settings').textContent = currentUser.nom || currentUser.email;
+
+    // Attacher les event listeners une seule fois
+    if (!settingsEventListenersAttached) {
+        initSettingsEventListeners();
+        settingsEventListenersAttached = true;
+    }
+
+    // Charger les données
+    await Promise.all([
+        loadBailleurInfo(),
+        loadAdministrateursSettings(),
+        loadCompteInfo()
+    ]);
+}
+
+// Changer d'onglet dans les paramètres
+window.switchSettingsTab = function(tabName) {
+    console.log('Switching to tab:', tabName);
+
+    // Mettre à jour les onglets actifs dans la sidebar
+    document.querySelectorAll('.settings-tab').forEach(tab => {
+        if (tab.dataset.tab === tabName) {
+            tab.classList.add('active');
+        } else {
+            tab.classList.remove('active');
+        }
+    });
+
+    // Mettre à jour le contenu actif
+    document.querySelectorAll('.settings-tab-content').forEach(content => {
+        content.classList.remove('active');
+    });
+
+    const targetContent = document.getElementById(`tab-${tabName}`);
+    if (targetContent) {
+        targetContent.classList.add('active');
+        console.log('Tab switched successfully to:', tabName);
+    } else {
+        console.error('Tab content not found:', `tab-${tabName}`);
+    }
+};
+
+// Initialiser les event listeners de la page paramètres
+function initSettingsEventListeners() {
+    // Bouton retour depuis les paramètres
+    document.getElementById('back-from-settings-btn').addEventListener('click', () => {
+        document.getElementById('settings-section').classList.add('hidden');
+        document.getElementById('biens-section').classList.remove('hidden');
+    });
+
+    // Bouton déconnexion depuis les paramètres
+    document.getElementById('logout-settings-btn').addEventListener('click', logout);
+}
+
+// Charger les informations du bailleur
+async function loadBailleurInfo() {
+    try {
+        const response = await fetch(`/api/bailleur?proprietaireId=${currentUser.id}`);
+        const data = await response.json();
+
+        if (data.bailleur) {
+            document.getElementById('bailleur-nom').value = data.bailleur.nom || '';
+            document.getElementById('bailleur-prenom').value = data.bailleur.prenom || '';
+            document.getElementById('bailleur-adresse').value = data.bailleur.adresse || '';
+            document.getElementById('bailleur-code-postal').value = data.bailleur.codePostal || '';
+            document.getElementById('bailleur-ville').value = data.bailleur.ville || '';
+            document.getElementById('bailleur-telephone').value = data.bailleur.telephone || '';
+            document.getElementById('bailleur-email').value = data.bailleur.email || '';
+            document.getElementById('bailleur-siret').value = data.bailleur.siret || '';
+            document.getElementById('bailleur-iban').value = data.bailleur.iban || '';
+        }
+    } catch (error) {
+        console.error('Erreur lors du chargement des informations du bailleur:', error);
+    }
+}
+
+// Sauvegarder les informations du bailleur
+document.getElementById('bailleur-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const bailleurData = {
+        nom: document.getElementById('bailleur-nom').value,
+        prenom: document.getElementById('bailleur-prenom').value,
+        adresse: document.getElementById('bailleur-adresse').value,
+        codePostal: document.getElementById('bailleur-code-postal').value,
+        ville: document.getElementById('bailleur-ville').value,
+        telephone: document.getElementById('bailleur-telephone').value,
+        email: document.getElementById('bailleur-email').value,
+        siret: document.getElementById('bailleur-siret').value,
+        iban: document.getElementById('bailleur-iban').value
+    };
+
+    try {
+        showLoading();
+
+        const response = await fetch(`/api/proprietaires/${currentUser.id}/bailleur`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(bailleurData)
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Erreur lors de l\'enregistrement');
+        }
+
+        showMessage('Informations du bailleur enregistrées avec succès', 'success');
+    } catch (error) {
+        console.error('Erreur:', error);
+        showMessage(error.message, 'error');
+    } finally {
+        hideLoading();
+    }
+});
+
+// Charger les informations du compte
+async function loadCompteInfo() {
+    document.getElementById('compte-nom').value = currentUser.nom || '';
+    document.getElementById('compte-email').value = currentUser.email || '';
+}
+
+// Gérer le changement de mot de passe
+document.getElementById('compte-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const ancienMdp = document.getElementById('compte-ancien-mdp').value;
+    const nouveauMdp = document.getElementById('compte-nouveau-mdp').value;
+    const confirmerMdp = document.getElementById('compte-confirmer-mdp').value;
+
+    if (!ancienMdp || !nouveauMdp || !confirmerMdp) {
+        showMessage('Veuillez remplir tous les champs', 'error');
+        return;
+    }
+
+    if (nouveauMdp !== confirmerMdp) {
+        showMessage('Les mots de passe ne correspondent pas', 'error');
+        return;
+    }
+
+    if (nouveauMdp.length < 6) {
+        showMessage('Le mot de passe doit contenir au moins 6 caractères', 'error');
+        return;
+    }
+
+    try {
+        showLoading();
+
+        // TODO: Implémenter l'API de changement de mot de passe avec Supabase
+        showMessage('Fonctionnalité de changement de mot de passe à implémenter', 'error');
+
+        // Réinitialiser les champs
+        document.getElementById('compte-ancien-mdp').value = '';
+        document.getElementById('compte-nouveau-mdp').value = '';
+        document.getElementById('compte-confirmer-mdp').value = '';
+
+    } catch (error) {
+        console.error('Erreur:', error);
+        showMessage(error.message, 'error');
+    } finally {
+        hideLoading();
+    }
+});
 
 window.closeSettingsModal = () => {
-    document.getElementById('settings-modal').style.display = 'none';
-    document.getElementById('admin-email-input').value = '';
+    // Cette fonction n'est plus utilisée avec la nouvelle page
+    openSettingsPage();
 };
 
-// Charger la liste des administrateurs
+// Charger la liste des administrateurs (pour l'ancien modal - rétrocompatibilité)
 async function loadAdministrateurs() {
     if (!currentUser || !currentUser.id) return;
 
@@ -2985,6 +3437,7 @@ async function loadAdministrateurs() {
         const data = await response.json();
 
         const container = document.getElementById('administrateurs-list');
+        if (!container) return; // Si le modal n'existe plus
 
         if (!data.administrateurs || data.administrateurs.length === 0) {
             container.innerHTML = '<p class="empty-state">Aucun administrateur. Vous êtes le seul à gérer ces biens.</p>';
@@ -3013,9 +3466,52 @@ async function loadAdministrateurs() {
     }
 }
 
-// Ajouter un administrateur
+// Charger la liste des administrateurs pour la nouvelle page paramètres
+async function loadAdministrateursSettings() {
+    if (!currentUser || !currentUser.id) return;
+
+    try {
+        const response = await fetch(`/api/proprietaires/${currentUser.id}/administrateurs`);
+        const data = await response.json();
+
+        const container = document.getElementById('settings-admin-list');
+
+        if (!data.administrateurs || data.administrateurs.length === 0) {
+            container.innerHTML = '<p class="empty-state">Aucun utilisateur. Vous êtes le seul à gérer ces biens.</p>';
+            return;
+        }
+
+        container.innerHTML = data.administrateurs.map(admin => {
+            const initials = (admin.utilisateur.nom || admin.utilisateur.email).substring(0, 2).toUpperCase();
+            return `
+                <div class="admin-item">
+                    <div class="admin-info">
+                        <div class="admin-avatar">${initials}</div>
+                        <div class="admin-details">
+                            <div class="admin-email">${admin.utilisateur.email}</div>
+                            <div class="admin-role">Administrateur</div>
+                        </div>
+                    </div>
+                    <div class="admin-actions">
+                        <button class="btn-danger" onclick="revoquerAdministrateurSettings('${admin.id}')">
+                            <i class="fas fa-user-times"></i> Révoquer
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+    } catch (error) {
+        console.error('Erreur lors du chargement des administrateurs:', error);
+        showMessage('Erreur lors du chargement des administrateurs', 'error');
+    }
+}
+
+// Ajouter un administrateur (fonctionne avec l'ancien modal et la nouvelle page)
 window.ajouterAdministrateur = async () => {
-    const email = document.getElementById('admin-email-input').value.trim();
+    // Essayer de récupérer l'email depuis la nouvelle page ou l'ancien modal
+    const emailInput = document.getElementById('new-admin-email') || document.getElementById('admin-email-input');
+    const email = emailInput ? emailInput.value.trim() : '';
 
     if (!email) {
         showMessage('Veuillez entrer un email', 'error');
@@ -3038,8 +3534,13 @@ window.ajouterAdministrateur = async () => {
         }
 
         showMessage('Administrateur ajouté avec succès', 'success');
-        document.getElementById('admin-email-input').value = '';
-        await loadAdministrateurs();
+
+        // Vider le champ
+        if (emailInput) emailInput.value = '';
+
+        // Recharger les listes
+        await loadAdministrateurs(); // Pour l'ancien modal
+        await loadAdministrateursSettings(); // Pour la nouvelle page
 
     } catch (error) {
         console.error('Erreur:', error);
@@ -3049,7 +3550,7 @@ window.ajouterAdministrateur = async () => {
     }
 };
 
-// Révoquer un administrateur
+// Révoquer un administrateur (pour l'ancien modal)
 window.revoquerAdministrateur = async (adminId) => {
     const confirmed = await showConfirmModal(
         'Révoquer l\'accès administrateur ?',
@@ -3071,6 +3572,37 @@ window.revoquerAdministrateur = async (adminId) => {
 
         showMessage('Administrateur révoqué', 'success');
         await loadAdministrateurs();
+
+    } catch (error) {
+        console.error('Erreur:', error);
+        showMessage(error.message, 'error');
+    } finally {
+        hideLoading();
+    }
+};
+
+// Révoquer un administrateur depuis la page paramètres
+window.revoquerAdministrateurSettings = async (adminId) => {
+    const confirmed = await showConfirmModal(
+        'Révoquer l\'accès administrateur ?',
+        'Cet utilisateur n\'aura plus accès à vos biens.',
+        'Oui, révoquer',
+        'btn-danger'
+    );
+
+    if (!confirmed) return;
+
+    try {
+        showLoading();
+
+        const response = await fetch(`/api/administrateurs/${adminId}`, {
+            method: 'DELETE'
+        });
+
+        if (!response.ok) throw new Error('Erreur lors de la révocation');
+
+        showMessage('Administrateur révoqué', 'success');
+        await loadAdministrateursSettings();
 
     } catch (error) {
         console.error('Erreur:', error);

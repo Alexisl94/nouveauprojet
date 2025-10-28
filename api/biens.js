@@ -99,14 +99,28 @@ export async function obtenirBiens(req, res) {
                 .order('date_creation', { ascending: false });
 
             // Récupérer le contrat actif (non archivé et actif)
-            const { data: contratActif } = await supabase
+            // Note: .single() peut retourner une erreur si aucun contrat n'existe, on utilise .maybeSingle() à la place
+            const { data: contratsActifs, error: contratError } = await supabase
                 .from('contrats')
                 .select('*')
                 .eq('bien_id', bien.id)
                 .eq('actif', true)
-                .order('date_debut', { ascending: false })
-                .limit(1)
-                .single();
+                .order('date_debut', { ascending: false });
+
+            // Filtrer pour exclure les contrats archivés (si le champ existe)
+            // Si archive n'existe pas ou est null/undefined, on considère que ce n'est pas archivé
+            const contratActif = contratsActifs && contratsActifs.length > 0
+                ? contratsActifs.find(c => !c.archive) || contratsActifs[0]
+                : null;
+
+            // Log pour debug
+            if (contratError) {
+                console.log(`Erreur contrat pour bien ${bien.nom}:`, contratError);
+            } else if (contratActif) {
+                console.log(`Contrat trouvé pour bien ${bien.nom}:`, contratActif);
+            } else {
+                console.log(`Pas de contrat actif pour bien ${bien.nom}`);
+            }
 
             // Transformation du contrat avec camelCase pour le frontend
             const contratFormate = contratActif ? {
@@ -634,7 +648,7 @@ export async function reorganiser(req, res) {
 // Créer un état des lieux
 export async function creerEtatDesLieux(req, res) {
     try {
-        const { bienId, type, locataire, etatEntreeId } = req.body;
+        const { bienId, type, locataire, etatEntreeId, contratId } = req.body;
 
         if (!bienId || !type) {
             return res.status(400).json({ error: 'ID bien et type requis' });
@@ -698,7 +712,8 @@ export async function creerEtatDesLieux(req, res) {
                 bien_id: bienId,
                 type,
                 locataire: locataire || '',
-                etat_entree_id: type === 'sortie' ? etatEntreeId : null
+                etat_entree_id: type === 'sortie' ? etatEntreeId : null,
+                contrat_id: contratId || null
             }])
             .select()
             .single();

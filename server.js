@@ -43,10 +43,21 @@ import {
 } from './api/biens.js';
 import { genererPDF, genererPDFEtat } from './api/pdf.js';
 import { obtenirPhotos, uploadPhoto, supprimerPhoto, updatePhotoLegende } from './api/photos.js';
-import { obtenirContrats, creerContrat, archiverContrat, supprimerContrat, genererContratPDF } from './api/contrats.js';
+import { obtenirContrats, creerContrat, archiverContrat, terminerContrat, supprimerContrat, genererContratPDF } from './api/contrats.js';
 import { obtenirQuittances, creerQuittance, supprimerQuittance, obtenirQuittance, envoyerQuittanceEmail } from './api/quittances.js';
 import { uploadMiddleware, uploadPhotoToStorage } from './api/upload.js';
 import { obtenirAdministrateurs, ajouterAdministrateur, revoquerAdministrateur, obtenirBiensAccessibles } from './api/administrateurs.js';
+import { obtenirBailleur, upsertBailleur } from './api/bailleur.js';
+import { inviteLocataire, verifyInvitationToken, acceptInvitation } from './api/invitations.js';
+import {
+    getLocataireDashboard,
+    getLocataireContratAPI,
+    getLocataireQuittances,
+    getLocataireQuittance,
+    getLocataireEtatDesLieux,
+    getLocatairePhotos,
+    getLocataireBien
+} from './api/locataire.js';
 
 // Routes d'authentification
 app.post('/api/auth/register', register);
@@ -99,6 +110,7 @@ app.get('/api/biens/:bienId/contrats', obtenirContrats);
 app.post('/api/biens/:bienId/contrats', creerContrat);
 app.get('/api/contrats/:contratId/pdf', genererContratPDF);
 app.put('/api/contrats/:contratId/archiver', archiverContrat);
+app.put('/api/contrats/:contratId/terminer', terminerContrat);
 app.delete('/api/contrats/:contratId', supprimerContrat);
 
 // Routes pour les quittances
@@ -113,6 +125,24 @@ app.get('/api/biens-accessibles', obtenirBiensAccessibles);
 app.get('/api/proprietaires/:proprietaireId/administrateurs', obtenirAdministrateurs);
 app.post('/api/proprietaires/:proprietaireId/administrateurs', ajouterAdministrateur);
 app.delete('/api/administrateurs/:adminId', revoquerAdministrateur);
+
+// Routes pour les informations du bailleur
+app.get('/api/bailleur', obtenirBailleur);
+app.post('/api/proprietaires/:proprietaireId/bailleur', upsertBailleur);
+
+// Routes pour les invitations locataires
+app.post('/api/contrats/:contratId/invite-locataire', inviteLocataire);
+app.get('/api/invitations/:token', verifyInvitationToken);
+app.post('/api/invitations/:token/accept', acceptInvitation);
+
+// Routes pour l'espace locataire
+app.get('/api/locataire/dashboard', getLocataireDashboard);
+app.get('/api/locataire/contrat', getLocataireContratAPI);
+app.get('/api/locataire/quittances', getLocataireQuittances);
+app.get('/api/locataire/quittances/:quittanceId', getLocataireQuittance);
+app.get('/api/locataire/etat-des-lieux', getLocataireEtatDesLieux);
+app.get('/api/locataire/photos', getLocatairePhotos);
+app.get('/api/locataire/bien', getLocataireBien);
 
 // Démarrer le serveur
 app.listen(PORT, () => {
