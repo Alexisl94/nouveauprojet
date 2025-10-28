@@ -237,8 +237,13 @@ saveBienBtn.addEventListener('click', async () => {
         if (!response.ok) throw new Error(data.error);
 
         closeModals();
-        loadBiens();
-        showMessage('Bien créé !');
+
+        // Recharger automatiquement la liste et la sidebar
+        if (typeof loadAndDisplayBiens === 'function') {
+            await loadAndDisplayBiens();
+        }
+
+        showMessage('Bien créé avec succès !');
     } catch (error) {
         showMessage(error.message, 'error');
     } finally {
@@ -3462,7 +3467,11 @@ async function loadAdministrateurs() {
 
     } catch (error) {
         console.error('Erreur lors du chargement des administrateurs:', error);
-        showMessage('Erreur lors du chargement des administrateurs', 'error');
+        // Ne pas afficher d'erreur si la table n'existe pas encore (en développement)
+        const container = document.getElementById('administrateurs-list');
+        if (container) {
+            container.innerHTML = '<p class="empty-state">Aucun administrateur. Vous êtes le seul à gérer ces biens.</p>';
+        }
     }
 }
 
@@ -3503,7 +3512,11 @@ async function loadAdministrateursSettings() {
 
     } catch (error) {
         console.error('Erreur lors du chargement des administrateurs:', error);
-        showMessage('Erreur lors du chargement des administrateurs', 'error');
+        // Ne pas afficher d'erreur si la table n'existe pas encore (en développement)
+        const container = document.getElementById('settings-admin-list');
+        if (container) {
+            container.innerHTML = '<p class="empty-state">Aucun utilisateur. Vous êtes le seul à gérer ces biens.</p>';
+        }
     }
 }
 

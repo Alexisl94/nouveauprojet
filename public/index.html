@@ -210,19 +210,6 @@
             <div id="biens-list" class="items-grid"></div>
         </div>
 
-        <!-- Modal pour ajouter un bien -->
-        <div id="bien-modal" class="modal hidden">
-            <div class="modal-content">
-                <h3>Nouveau Bien Immobilier</h3>
-                <input type="text" id="bien-nom" placeholder="Nom du bien (ex: Appartement Paris 15)">
-                <input type="text" id="bien-adresse" placeholder="Adresse complète">
-                <div class="modal-actions">
-                    <button id="save-bien-btn" class="btn-primary">Créer</button>
-                    <button class="close-modal btn-secondary">Annuler</button>
-                </div>
-            </div>
-        </div>
-
         <!-- Modal pour modifier un bien -->
         <div id="edit-bien-modal" class="modal hidden">
             <div class="modal-content">
@@ -838,9 +825,22 @@
         </div>
     </div>
 
+    <!-- Modal pour ajouter un bien (accessible globalement) -->
+    <div id="bien-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Nouveau Bien Immobilier</h3>
+            <input type="text" id="bien-nom" placeholder="Nom du bien (ex: Appartement Paris 15)">
+            <input type="text" id="bien-adresse" placeholder="Adresse complète">
+            <div class="modal-actions">
+                <button id="save-bien-btn" class="btn-primary">Créer</button>
+                <button class="close-modal btn-secondary">Annuler</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="sidebar.js?v=9"></script>
-    <script src="app.js?v=6"></script>
+    <script src="sidebar.js?v=11"></script>
+    <script src="app.js?v=8"></script>
     <link rel="stylesheet" href="styles.css?v=7">
 </body>
 </html>

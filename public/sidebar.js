@@ -285,7 +285,7 @@ function showBiensListPage() {
 }
 
 // Fonction helper pour ouvrir le modal de création de bien
-function openCreateBienModal() {
+window.openCreateBienModal = function() {
     const modal = document.getElementById('bien-modal');
     if (modal) {
         modal.classList.remove('hidden');
@@ -346,7 +346,7 @@ async function loadAndDisplayBiens() {
 }
 
 // Navigation vers un bien spécifique
-async function navigateToBien(bienId) {
+window.navigateToBien = async function(bienId) {
     console.log('Navigation vers bien:', bienId);
 
     // Stocker l'ID du bien actuel
@@ -356,6 +356,83 @@ async function navigateToBien(bienId) {
     if (typeof window.openBienDetail === 'function') {
         await window.openBienDetail(bienId);
     }
+}
+
+// Éditer un bien
+window.editBien = function(bienId, nom, adresse) {
+    const modal = document.getElementById('bien-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        document.getElementById('bien-nom').value = nom;
+        document.getElementById('bien-adresse').value = adresse;
+        // TODO: Stocker l'ID pour faire un UPDATE au lieu d'un INSERT
+        window.currentEditingBienId = bienId;
+    }
+}
+
+// Dupliquer un bien
+window.duplicateBien = async function(bienId) {
+    if (!confirm('Voulez-vous dupliquer ce bien ?')) return;
+
+    try {
+        showLoading();
+        const response = await fetch(`/api/biens/${bienId}/duplicate`, {
+            method: 'POST'
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Erreur lors de la duplication');
+        }
+
+        showMessage('Bien dupliqué avec succès', 'success');
+        loadAndDisplayBiens();
+    } catch (error) {
+        console.error('Erreur:', error);
+        showMessage(error.message, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// Supprimer un bien
+window.deleteBien = async function(bienId) {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer ce bien ? Cette action est irréversible.')) return;
+
+    try {
+        showLoading();
+        const response = await fetch(`/api/biens/${bienId}`, {
+            method: 'DELETE'
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Erreur lors de la suppression');
+        }
+
+        showMessage('Bien supprimé avec succès', 'success');
+        loadAndDisplayBiens();
+    } catch (error) {
+        console.error('Erreur:', error);
+        showMessage(error.message, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// Actions rapides - Créer un contrat
+window.ouvrirCreationContrat = function() {
+    showMessage('Fonctionnalité de création de contrat à venir', 'info');
+}
+
+// Actions rapides - Créer une quittance
+window.ouvrirCreationQuittance = function() {
+    showMessage('Fonctionnalité de création de quittance à venir', 'info');
+}
+
+// Actions rapides - Démarrer un état des lieux
+window.ouvrirCreationEtat = function() {
+    showMessage('Fonctionnalité de création d\'état des lieux à venir', 'info');
 }
 
 // Afficher la page Bailleur
@@ -672,7 +749,7 @@ async function loadAdministrateursSettings() {
 }
 
 // Ajouter un administrateur depuis les paramètres
-async function ajouterAdministrateur() {
+window.ajouterAdministrateur = async function() {
     const email = document.getElementById('new-admin-email').value.trim();
 
     if (!email) {
@@ -710,7 +787,7 @@ async function ajouterAdministrateur() {
 }
 
 // Révoquer un administrateur depuis les paramètres
-async function revoquerAdministrateurSettings(adminId) {
+window.revoquerAdministrateurSettings = async function(adminId) {
     if (!confirm('Êtes-vous sûr de vouloir révoquer l\'accès de cet utilisateur ?')) {
         return;
     }
@@ -1079,7 +1156,7 @@ function createContratCardHTML(contrat) {
 }
 
 // Ouvrir le modal d'invitation
-function openInvitationModalContrats(contratId) {
+window.openInvitationModalContrats = function(contratId) {
     const contrat = contratsData.find(c => c.id === contratId);
     if (!contrat) return;
 
@@ -1098,13 +1175,13 @@ function openInvitationModalContrats(contratId) {
 }
 
 // Fermer le modal
-function closeInvitationModalContrats() {
+window.closeInvitationModalContrats = function() {
     document.getElementById('invitation-modal-contrats').classList.add('hidden');
     currentContratIdForInvitation = null;
 }
 
 // Envoyer l'invitation
-async function sendInvitationContrats() {
+window.sendInvitationContrats = async function() {
     if (!currentContratIdForInvitation) return;
 
     const btn = document.getElementById('send-invitation-btn-contrats');
@@ -1174,7 +1251,7 @@ async function sendInvitationContrats() {
 }
 
 // Copier le lien d'invitation
-function copyInvitationLinkContrats() {
+window.copyInvitationLinkContrats = function() {
     const link = document.getElementById('invitation-link-contrats').textContent;
     navigator.clipboard.writeText(link).then(() => {
         const btn = event.target.closest('.copy-btn');

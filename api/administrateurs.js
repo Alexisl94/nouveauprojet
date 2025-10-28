@@ -13,7 +13,7 @@ export async function obtenirAdministrateurs(req, res) {
                 actif,
                 utilisateur:utilisateurs(id, email, nom)
             `)
-            .eq('proprietaire_id', proprietaireId)
+            .eq('utilisateur_proprietaire_id', proprietaireId)
             .eq('actif', true)
             .order('date_ajout', { ascending: false });
 
@@ -34,13 +34,18 @@ export async function ajouterAdministrateur(req, res) {
 
         // Vérifier que le propriétaire existe
         const { data: proprietaire, error: propError } = await supabase
-            .from('proprietaires')
-            .select('id, email')
+            .from('utilisateurs')
+            .select('id, email, role')
             .eq('id', proprietaireId)
             .single();
 
         if (propError || !proprietaire) {
-            return res.status(404).json({ error: 'Propriétaire non trouvé' });
+            return res.status(404).json({ error: 'Utilisateur non trouvé' });
+        }
+
+        // Vérifier que c'est bien un propriétaire
+        if (proprietaire.role !== 'proprietaire') {
+            return res.status(403).json({ error: 'Seuls les propriétaires peuvent inviter des administrateurs' });
         }
 
         // Vérifier que l'utilisateur n'est pas le propriétaire lui-même
@@ -63,7 +68,7 @@ export async function ajouterAdministrateur(req, res) {
         const { data: adminExistant } = await supabase
             .from('administrateurs_proprietaire')
             .select('id, actif')
-            .eq('proprietaire_id', proprietaireId)
+            .eq('utilisateur_proprietaire_id', proprietaireId)
             .eq('utilisateur_id', utilisateur.id)
             .single();
 
@@ -93,7 +98,7 @@ export async function ajouterAdministrateur(req, res) {
         const { data: admin, error } = await supabase
             .from('administrateurs_proprietaire')
             .insert({
-                proprietaire_id: proprietaireId,
+                utilisateur_proprietaire_id: proprietaireId,
                 utilisateur_id: utilisateur.id
             })
             .select(`

@@ -6,25 +6,41 @@ export async function creerBien(req, res) {
         const { proprietaireId, nom, adresse } = req.body;
 
         if (!proprietaireId || !nom) {
-            return res.status(400).json({ error: 'ID propriétaire et nom du bien requis' });
+            return res.status(400).json({ error: 'ID utilisateur et nom du bien requis' });
         }
 
-        // Vérifier que le propriétaire existe
-        const { data: proprietaire, error: propError } = await supabase
-            .from('proprietaires')
-            .select('id')
+        // Vérifier que l'utilisateur existe
+        const { data: utilisateur, error: userError } = await supabase
+            .from('utilisateurs')
+            .select('id, role')
             .eq('id', proprietaireId)
             .single();
 
-        if (propError || !proprietaire) {
-            return res.status(404).json({ error: 'Propriétaire non trouvé' });
+        if (userError || !utilisateur) {
+            return res.status(404).json({ error: 'Utilisateur non trouvé' });
         }
 
-        // Créer le bien
+        // Vérifier que l'utilisateur est propriétaire ou administrateur
+        if (utilisateur.role === 'locataire') {
+            return res.status(403).json({ error: 'Les locataires ne peuvent pas créer de biens' });
+        }
+
+        // Récupérer le compte de l'utilisateur (compte dont il est propriétaire)
+        const { data: compte, error: compteError } = await supabase
+            .from('comptes')
+            .select('id')
+            .eq('proprietaire_id', proprietaireId)
+            .single();
+
+        if (compteError || !compte) {
+            return res.status(404).json({ error: 'Aucun compte trouvé pour cet utilisateur' });
+        }
+
+        // Créer le bien lié au compte
         const { data: bien, error } = await supabase
             .from('biens')
             .insert([{
-                proprietaire_id: proprietaireId,
+                compte_id: compte.id,
                 nom,
                 adresse: adresse || ''
             }])
@@ -40,7 +56,8 @@ export async function creerBien(req, res) {
         res.json({
             bien: {
                 id: bien.id,
-                proprietaireId: bien.proprietaire_id,
+                proprietaireId: proprietaireId, // Pour compatibilité frontend
+                compteId: bien.compte_id,
                 nom: bien.nom,
                 adresse: bien.adresse,
                 creeLe: bien.cree_le,
@@ -61,14 +78,29 @@ export async function obtenirBiens(req, res) {
         const { proprietaireId } = req.query;
 
         if (!proprietaireId) {
-            return res.status(400).json({ error: 'ID propriétaire requis' });
+            return res.status(400).json({ error: 'ID utilisateur requis' });
         }
 
-        // Récupérer les biens
+        // Récupérer les biens accessibles (propriétaire direct + administrateur)
+        const { data: biensAccessibles, error: accessError } = await supabase
+            .rpc('get_biens_accessibles', { p_utilisateur_id: proprietaireId });
+
+        if (accessError) {
+            console.error('Erreur lors de la récupération des biens accessibles:', accessError);
+            return res.status(500).json({ error: 'Erreur serveur' });
+        }
+
+        const bienIds = biensAccessibles.map(b => b.bien_id);
+
+        if (bienIds.length === 0) {
+            return res.json({ biens: [] });
+        }
+
+        // Récupérer les détails des biens
         const { data: biens, error: biensError } = await supabase
             .from('biens')
             .select('*')
-            .eq('proprietaire_id', proprietaireId);
+            .in('id', bienIds);
 
         if (biensError) {
             console.error('Erreur Supabase:', biensError);
@@ -140,7 +172,8 @@ export async function obtenirBiens(req, res) {
 
             return {
                 id: bien.id,
-                proprietaireId: bien.proprietaire_id,
+                proprietaireId: bien.compte_id, // Utilise compte_id maintenant
+                compteId: bien.compte_id,
                 nom: bien.nom,
                 adresse: bien.adresse,
                 creeLe: bien.cree_le,
@@ -203,7 +236,8 @@ export async function obtenirBien(req, res) {
         res.json({
             bien: {
                 id: bien.id,
-                proprietaireId: bien.proprietaire_id,
+                proprietaireId: bien.compte_id,
+                compteId: bien.compte_id,
                 nom: bien.nom,
                 adresse: bien.adresse,
                 creeLe: bien.cree_le,
@@ -393,7 +427,8 @@ export async function modifierBien(req, res) {
         res.json({
             bien: {
                 id: bien.id,
-                proprietaireId: bien.proprietaire_id,
+                proprietaireId: bien.compte_id,
+                compteId: bien.compte_id,
                 nom: bien.nom,
                 adresse: bien.adresse,
                 creeLe: bien.cree_le
@@ -425,7 +460,7 @@ export async function dupliquerBien(req, res) {
         const { data: bienDuplique, error: dupError } = await supabase
             .from('biens')
             .insert([{
-                proprietaire_id: bienOriginal.proprietaire_id,
+                compte_id: bienOriginal.compte_id,
                 nom: `${bienOriginal.nom} (Copie)`,
                 adresse: bienOriginal.adresse
             }])
@@ -483,7 +518,8 @@ export async function dupliquerBien(req, res) {
         res.json({
             bien: {
                 id: bienDuplique.id,
-                proprietaireId: bienDuplique.proprietaire_id,
+                proprietaireId: bienDuplique.compte_id,
+                compteId: bienDuplique.compte_id,
                 nom: bienDuplique.nom,
                 adresse: bienDuplique.adresse,
                 creeLe: bienDuplique.cree_le,

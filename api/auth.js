@@ -44,14 +44,18 @@ export async function register(req, res) {
             return res.status(500).json({ error: 'Erreur lors de l\'inscription' });
         }
 
-        // Créer aussi dans la table proprietaires pour compatibilité
-        await supabase
-            .from('proprietaires')
-            .insert([{
-                email,
-                nom,
-                mot_de_passe: motDePasse // Pour compatibilité
-            }]);
+        // Créer automatiquement un compte pour l'utilisateur
+        const { data: compte, error: compteError } = await supabase
+            .rpc('creer_compte_complet', {
+                p_utilisateur_id: utilisateur.id,
+                p_nom_compte: `Patrimoine ${nom}`,
+                p_type_compte: 'particulier'
+            });
+
+        if (compteError) {
+            console.error('Erreur lors de la création du compte:', compteError);
+            // On continue quand même, le compte pourra être créé plus tard
+        }
 
         // Générer un token JWT
         const token = jwt.sign(
