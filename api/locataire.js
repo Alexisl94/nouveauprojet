@@ -24,15 +24,21 @@ async function getLocataireContrat(locataireUserId) {
 // GET /api/locataire/dashboard
 // Dashboard de l'espace locataire
 export async function getLocataireDashboard(req, res) {
-    const { id: userId, role } = req.user;
+    const { userId } = req.query;
 
-    if (role !== 'locataire') {
-        return res.status(403).json({ error: 'Accès réservé aux locataires' });
+    console.log('📊 Dashboard locataire - userId:', userId);
+
+    if (!userId) {
+        return res.status(400).json({ error: 'userId requis' });
     }
 
     try {
         // Récupérer le contrat actif
+        console.log('🔍 Recherche du contrat pour userId:', userId);
         const { data: contrat, error: contratError } = await getLocataireContrat(userId);
+
+        console.log('📄 Contrat trouvé:', contrat);
+        console.log('❌ Erreur contrat:', contratError);
 
         if (contratError || !contrat) {
             return res.status(404).json({ error: 'Aucun contrat actif trouvé' });
@@ -98,11 +104,12 @@ export async function getLocataireDashboard(req, res) {
 // GET /api/locataire/contrat
 // Détails complets du contrat
 export async function getLocataireContratAPI(req, res) {
-    const { id: userId, role } = req.user;
+    const { userId } = req.query;
 
-    if (role !== 'locataire') {
-        return res.status(403).json({ error: 'Accès refusé' });
+    if (!userId) {
+        return res.status(400).json({ error: 'userId requis' });
     }
+
 
     try {
         const { data: contrat, error } = await getLocataireContrat(userId);
@@ -122,11 +129,12 @@ export async function getLocataireContratAPI(req, res) {
 // GET /api/locataire/quittances
 // Liste des quittances du locataire
 export async function getLocataireQuittances(req, res) {
-    const { id: userId, role } = req.user;
+    const { userId } = req.query;
 
-    if (role !== 'locataire') {
-        return res.status(403).json({ error: 'Accès refusé' });
+    if (!userId) {
+        return res.status(400).json({ error: 'userId requis' });
     }
+
 
     try {
         const { data: contrat } = await getLocataireContrat(userId);
@@ -157,12 +165,13 @@ export async function getLocataireQuittances(req, res) {
 // GET /api/locataire/quittances/:quittanceId
 // Détail d'une quittance spécifique
 export async function getLocataireQuittance(req, res) {
-    const { id: userId, role } = req.user;
+    const { userId } = req.query;
+
+    if (!userId) {
+        return res.status(400).json({ error: 'userId requis' });
+    }
     const { quittanceId } = req.params;
 
-    if (role !== 'locataire') {
-        return res.status(403).json({ error: 'Accès refusé' });
-    }
 
     try {
         const { data: contrat } = await getLocataireContrat(userId);
@@ -194,11 +203,12 @@ export async function getLocataireQuittance(req, res) {
 // GET /api/locataire/etat-des-lieux
 // État des lieux d'entrée uniquement
 export async function getLocataireEtatDesLieux(req, res) {
-    const { id: userId, role } = req.user;
+    const { userId } = req.query;
 
-    if (role !== 'locataire') {
-        return res.status(403).json({ error: 'Accès refusé' });
+    if (!userId) {
+        return res.status(400).json({ error: 'userId requis' });
     }
+
 
     try {
         const { data: contrat } = await getLocataireContrat(userId);
@@ -231,11 +241,12 @@ export async function getLocataireEtatDesLieux(req, res) {
 // GET /api/locataire/photos
 // Photos du bien pendant la période du contrat
 export async function getLocatairePhotos(req, res) {
-    const { id: userId, role } = req.user;
+    const { userId } = req.query;
 
-    if (role !== 'locataire') {
-        return res.status(403).json({ error: 'Accès refusé' });
+    if (!userId) {
+        return res.status(400).json({ error: 'userId requis' });
     }
+
 
     try {
         const { data: contrat } = await getLocataireContrat(userId);
@@ -268,11 +279,12 @@ export async function getLocatairePhotos(req, res) {
 // GET /api/locataire/bien
 // Informations du bien loué
 export async function getLocataireBien(req, res) {
-    const { id: userId, role } = req.user;
+    const { userId } = req.query;
 
-    if (role !== 'locataire') {
-        return res.status(403).json({ error: 'Accès refusé' });
+    if (!userId) {
+        return res.status(400).json({ error: 'userId requis' });
     }
+
 
     try {
         const { data: contrat } = await getLocataireContrat(userId);

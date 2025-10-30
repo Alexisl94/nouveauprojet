@@ -1059,7 +1059,7 @@ async function loadContratsData() {
     const container = document.getElementById('contrats-list-container');
 
     try {
-        const response = await fetch('/api/contrats');
+        const response = await fetch(`/api/contrats?proprietaireId=${currentUser.id}`);
 
         if (!response.ok) {
             throw new Error('Erreur lors du chargement des contrats');
@@ -1082,6 +1082,11 @@ async function loadContratsData() {
         // Afficher les contrats
         container.innerHTML = contratsData.map(contrat => createContratCardHTML(contrat)).join('');
 
+        // Charger le statut d'invitation pour chaque contrat
+        for (const contrat of contratsData) {
+            loadInvitationStatusForContrat(contrat.id);
+        }
+
     } catch (error) {
         console.error('Erreur:', error);
         container.innerHTML = `
@@ -1094,63 +1099,138 @@ async function loadContratsData() {
     }
 }
 
-// Créer le HTML d'une carte de contrat
+// Charger le statut d'invitation pour un contrat spécifique
+async function loadInvitationStatusForContrat(contratId) {
+    const contrat = contratsData.find(c => c.id === contratId);
+    if (!contrat) return;
+
+    const statusBadge = document.getElementById(`status-${contratId}`);
+    const actionsZone = document.getElementById(`actions-${contratId}`);
+
+    try {
+        const response = await fetch(`/api/contrats/${contratId}/invitation-status`);
+        const data = await response.json();
+
+        if (response.ok && data.status) {
+            const status = data.status;
+
+            // Mettre à jour le badge de statut
+            statusBadge.innerHTML = generateInvitationBadge(contrat, status);
+
+            // Mettre à jour les actions
+            actionsZone.innerHTML = generateInvitationActions(contrat, status);
+        } else {
+            // Fallback en cas d'erreur
+            statusBadge.innerHTML = generateInvitationBadge(contrat, null);
+            actionsZone.innerHTML = generateInvitationActions(contrat, null);
+        }
+    } catch (error) {
+        console.error(`Erreur chargement statut invitation pour contrat ${contratId}:`, error);
+        // Fallback en cas d'erreur
+        statusBadge.innerHTML = generateInvitationBadge(contrat, null);
+        actionsZone.innerHTML = generateInvitationActions(contrat, null);
+    }
+}
+
+// Générer le badge d'invitation simplifié
+function generateInvitationBadge(contrat, status) {
+    const hasEmail = contrat.locataire_email && contrat.locataire_email.trim() !== '';
+
+    if (!hasEmail) {
+        return '<span class="status-badge badge-warning">Aucun email</span>';
+    }
+
+    if (status && status.locataire_connected) {
+        return '<span class="status-badge badge-success">✓ Accès actif</span>';
+    }
+
+    if (status && status.invitation_sent && !status.invitation_expired) {
+        return '<span class="status-badge badge-info">En attente</span>';
+    }
+
+    if (status && status.invitation_expired) {
+        return '<span class="status-badge badge-warning">Expirée</span>';
+    }
+
+    return '<span class="status-badge badge-default">Non invité</span>';
+}
+
+// Générer les actions d'invitation simplifiées
+function generateInvitationActions(contrat, status) {
+    const hasEmail = contrat.locataire_email && contrat.locataire_email.trim() !== '';
+
+    if (!hasEmail) {
+        return `<p class="help-text">Ajoutez un email pour inviter ce locataire</p>`;
+    }
+
+    if (status && status.locataire_connected) {
+        return `<p class="success-text">✓ Le locataire peut se connecter à son espace</p>`;
+    }
+
+    if (status && status.invitation_sent && !status.invitation_expired && status.invitation_link) {
+        return `
+            <div class="link-share-row">
+                <input type="text" readonly value="${status.invitation_link}" class="link-input" id="link-${contrat.id}">
+                <button class="btn-copy" onclick="copyInvitationLinkFromCard('${contrat.id}')">
+                    <i class="fas fa-copy"></i> Copier
+                </button>
+            </div>
+        `;
+    }
+
+    // Pas encore invité ou expiré
+    return `
+        <button class="btn-invite" onclick="openInvitationModalContrats('${contrat.id}')">
+            ${(status && status.invitation_expired) ? 'Renvoyer l\'invitation' : 'Donner accès'}
+        </button>
+    `;
+}
+
+// Copier le lien d'invitation depuis une carte
+window.copyInvitationLinkFromCard = function(contratId) {
+    const input = document.getElementById(`link-${contratId}`);
+    if (input) {
+        input.select();
+        navigator.clipboard.writeText(input.value).then(() => {
+            const btn = event.target.closest('.btn-copy-link');
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-check"></i> Copié !';
+            setTimeout(() => {
+                btn.innerHTML = originalHTML;
+            }, 2000);
+        });
+    }
+}
+
+// Créer le HTML d'une carte de contrat simple et épurée
 function createContratCardHTML(contrat) {
     const hasEmail = contrat.locataire_email && contrat.locataire_email.trim() !== '';
-    const locataireLinked = contrat.locataire_user_id != null;
+    const prenom = contrat.locataire_prenom || '';
+    const nom = contrat.locataire_nom || '';
+    const nomComplet = `${prenom} ${nom}`.trim() || 'Locataire';
 
     return `
-        <div class="contrat-card">
-            <div class="contrat-header">
-                <div>
-                    <div class="contrat-title">
-                        ${contrat.locataire_prenom || ''} ${contrat.locataire_nom || 'Locataire'}
-                        ${locataireLinked ? '<span class="badge success"><i class="fas fa-check"></i> Compte actif</span>' : ''}
-                    </div>
-                    <div class="contrat-subtitle">
-                        ${contrat.bien_nom || 'Bien'} - ${formatDateContrat(contrat.date_debut)}
-                    </div>
+        <div class="contrat-simple-card" id="contrat-${contrat.id}">
+            <div class="contrat-simple-header">
+                <div class="contrat-main-info">
+                    <h3 class="contrat-locataire-name">${nomComplet}</h3>
+                    <p class="contrat-bien-name">${contrat.bien_nom || 'Bien'}</p>
                 </div>
-                <div class="contrat-actions">
-                    ${hasEmail && !locataireLinked ? `
-                        <button class="btn-invite" onclick="openInvitationModalContrats('${contrat.id}')">
-                            <i class="fas fa-paper-plane"></i>
-                            Inviter
-                        </button>
-                    ` : ''}
+                <div class="contrat-status-container" id="status-${contrat.id}">
+                    <div class="loading-dot"></div>
                 </div>
             </div>
 
-            <div class="contrat-info">
-                <div class="info-item">
-                    <i class="fas fa-envelope"></i>
-                    <span>${hasEmail ? contrat.locataire_email : 'Aucun email'}</span>
+            <div class="contrat-simple-body">
+                <div class="contrat-email-row">
+                    <span class="label-text">Email :</span>
+                    <span class="value-text ${!hasEmail ? 'text-muted' : ''}">${hasEmail ? contrat.locataire_email : 'Non renseigné'}</span>
                 </div>
-                <div class="info-item">
-                    <i class="fas fa-euro-sign"></i>
-                    <span>${formatCurrencyContrat(contrat.loyer || 0)} / mois</span>
-                </div>
-                <div class="info-item">
-                    <i class="fas fa-calendar"></i>
-                    <span>Du ${formatDateContrat(contrat.date_debut)} ${contrat.date_fin ? 'au ' + formatDateContrat(contrat.date_fin) : ''}</span>
-                </div>
-                <div class="info-item">
-                    <i class="fas fa-${contrat.statut === 'actif' ? 'check-circle' : 'clock'}"></i>
-                    <span class="badge ${contrat.statut === 'actif' ? 'success' : 'warning'}">${contrat.statut || 'Inconnu'}</span>
+
+                <div class="contrat-actions-container" id="actions-${contrat.id}">
+                    <div class="loading-dot"></div>
                 </div>
             </div>
-
-            ${!hasEmail ? `
-                <div style="background: #fef3c7; padding: 12px; border-radius: 8px; margin-top: 12px; font-size: 14px; color: #92400e;">
-                    <i class="fas fa-info-circle"></i> Ajoutez un email au locataire pour pouvoir l'inviter
-                </div>
-            ` : ''}
-
-            ${locataireLinked ? `
-                <div style="background: var(--bg-success); padding: 12px; border-radius: 8px; margin-top: 12px; font-size: 14px; color: var(--primary-color);">
-                    <i class="fas fa-check-circle"></i> Le locataire a accès à son espace personnel
-                </div>
-            ` : ''}
         </div>
     `;
 }
@@ -1230,10 +1310,13 @@ window.sendInvitationContrats = async function() {
 
         btn.innerHTML = '<i class="fas fa-check"></i> Invitation créée';
 
-        // Recharger la liste des contrats après 2 secondes
+        // Recharger le statut d'invitation pour ce contrat immédiatement
+        loadInvitationStatusForContrat(currentContratIdForInvitation);
+
+        // Fermer le modal après 3 secondes
         setTimeout(() => {
-            loadContratsData();
-        }, 2000);
+            closeInvitationModalContrats();
+        }, 3000);
 
     } catch (error) {
         console.error('Erreur:', error);

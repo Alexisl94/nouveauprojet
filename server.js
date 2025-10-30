@@ -18,6 +18,11 @@ app.use(express.json());
 // Servir les fichiers statiques du dossier 'public'
 app.use(express.static(join(__dirname, 'public')));
 
+// Route pour la page d'invitation
+app.get('/invitation', (req, res) => {
+    res.sendFile(join(__dirname, 'public', 'invitation.html'));
+});
+
 // Import des routes API
 import { register, login } from './api/auth.js';
 import {
@@ -43,7 +48,7 @@ import {
 } from './api/biens.js';
 import { genererPDF, genererPDFEtat } from './api/pdf.js';
 import { obtenirPhotos, uploadPhoto, supprimerPhoto, updatePhotoLegende } from './api/photos.js';
-import { obtenirContrats, creerContrat, archiverContrat, terminerContrat, supprimerContrat, genererContratPDF } from './api/contrats.js';
+import { obtenirContrats, creerContrat, archiverContrat, terminerContrat, supprimerContrat, genererContratPDF, getInvitationStatus, obtenirTousLesContrats } from './api/contrats.js';
 import { obtenirQuittances, creerQuittance, supprimerQuittance, obtenirQuittance, envoyerQuittanceEmail } from './api/quittances.js';
 import { uploadMiddleware, uploadPhotoToStorage } from './api/upload.js';
 import { obtenirAdministrateurs, ajouterAdministrateur, revoquerAdministrateur, obtenirBiensAccessibles } from './api/administrateurs.js';
@@ -106,9 +111,11 @@ app.put('/api/photos/:photoId/legende', updatePhotoLegende);
 app.post('/api/upload/photo', uploadMiddleware, uploadPhotoToStorage);
 
 // Routes pour les contrats
+app.get('/api/contrats', obtenirTousLesContrats);
 app.get('/api/biens/:bienId/contrats', obtenirContrats);
 app.post('/api/biens/:bienId/contrats', creerContrat);
 app.get('/api/contrats/:contratId/pdf', genererContratPDF);
+app.get('/api/contrats/:contratId/invitation-status', getInvitationStatus);
 app.put('/api/contrats/:contratId/archiver', archiverContrat);
 app.put('/api/contrats/:contratId/terminer', terminerContrat);
 app.delete('/api/contrats/:contratId', supprimerContrat);

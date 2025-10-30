@@ -76,14 +76,19 @@ export async function creerQuittance(req, res) {
             .single();
 
         if (error) {
-            console.error('Erreur Supabase:', error);
-            return res.status(500).json({ error: 'Erreur serveur' });
+            console.error('Erreur Supabase lors de la création de quittance:', error);
+            return res.status(500).json({
+                error: `Erreur lors de la création de la quittance: ${error.message || 'Erreur inconnue'}`,
+                details: error.details || error.hint || ''
+            });
         }
 
         res.json({ quittance });
     } catch (error) {
-        console.error('Erreur:', error);
-        res.status(500).json({ error: 'Erreur serveur' });
+        console.error('Erreur lors de la création de la quittance:', error);
+        return res.status(500).json({
+            error: `Erreur lors de la création de la quittance: ${error.message || 'Erreur inconnue'}`
+        });
     }
 }
 

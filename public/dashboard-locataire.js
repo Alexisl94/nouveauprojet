@@ -55,11 +55,7 @@ function displayUserInfo() {
 // Charger les données du dashboard
 async function loadDashboard() {
     try {
-        const response = await fetch(`${API_BASE}/api/locataire/dashboard`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
+        const response = await fetch(`${API_BASE}/api/locataire/dashboard?userId=${currentUser.id}`);
 
         if (!response.ok) {
             if (response.status === 401) {
@@ -272,11 +268,7 @@ async function loadQuittances() {
     content.innerHTML = '<div class="loading-spinner"><div class="spinner"></div><p>Chargement...</p></div>';
 
     try {
-        const response = await fetch(`${API_BASE}/api/locataire/quittances`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
+        const response = await fetch(`${API_BASE}/api/locataire/quittances?userId=${currentUser.id}`);
 
         if (!response.ok) throw new Error('Erreur lors du chargement des quittances');
 
@@ -330,11 +322,7 @@ async function loadEtatDesLieux() {
     content.innerHTML = '<div class="loading-spinner"><div class="spinner"></div><p>Chargement...</p></div>';
 
     try {
-        const response = await fetch(`${API_BASE}/api/locataire/etat-des-lieux`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
+        const response = await fetch(`${API_BASE}/api/locataire/etat-des-lieux?userId=${currentUser.id}`);
 
         if (!response.ok) throw new Error('Erreur lors du chargement de l\'état des lieux');
 
@@ -458,11 +446,7 @@ async function loadBien() {
 // Charger les photos du bien
 async function loadPhotos(parentElement) {
     try {
-        const response = await fetch(`${API_BASE}/api/locataire/photos`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
+        const response = await fetch(`${API_BASE}/api/locataire/photos?userId=${currentUser.id}`);
 
         if (!response.ok) return;
 

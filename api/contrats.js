@@ -7,11 +7,27 @@ export async function obtenirTousLesContrats(req, res) {
         // Récupérer le proprietaireId depuis la query string
         const { proprietaireId } = req.query;
 
+        console.log('📋 Récupération des contrats pour proprietaireId:', proprietaireId);
+
         if (!proprietaireId) {
             return res.status(400).json({ error: 'proprietaireId requis' });
         }
 
-        // Récupérer tous les contrats des biens du propriétaire avec les infos du bien
+        // D'ABORD : Récupérer le compte de l'utilisateur
+        const { data: compte, error: compteError } = await supabase
+            .from('comptes')
+            .select('id')
+            .eq('proprietaire_id', proprietaireId)
+            .single();
+
+        if (compteError || !compte) {
+            console.log('⚠️ Aucun compte trouvé pour cet utilisateur');
+            return res.json({ contrats: [] });
+        }
+
+        console.log('✅ Compte trouvé:', compte.id);
+
+        // ENSUITE : Récupérer tous les contrats des biens de ce compte
         const { data: contrats, error } = await supabase
             .from('contrats')
             .select(`
@@ -20,14 +36,15 @@ export async function obtenirTousLesContrats(req, res) {
                     id,
                     nom,
                     adresse,
-                    proprietaire_id
+                    compte_id
                 )
             `)
-            .eq('biens.proprietaire_id', proprietaireId)
+            .eq('biens.compte_id', compte.id)
             .order('cree_le', { ascending: false });
 
+        console.log('✅ Contrats trouvés:', contrats?.length || 0);
         if (error) {
-            console.error('Erreur Supabase:', error);
+            console.error('❌ Erreur Supabase:', error);
             return res.status(500).json({ error: 'Erreur serveur' });
         }
 
@@ -102,15 +119,19 @@ export async function creerContrat(req, res) {
             return res.status(400).json({ error: 'Champs requis manquants' });
         }
 
-        // Récupérer les infos du bien
+        // Vérifier que le bien existe
         const { data: bien, error: bienError } = await supabase
             .from('biens')
-            .select('*, proprietaires(*)')
+            .select('id, nom, compte_id')
             .eq('id', bienId)
             .single();
 
         if (bienError || !bien) {
-            return res.status(404).json({ error: 'Bien non trouvé' });
+            console.error('Erreur lors de la recherche du bien:', bienError);
+            return res.status(404).json({
+                error: 'Bien non trouvé',
+                details: bienError ? bienError.message : 'Le bien n\'existe pas'
+            });
         }
 
         // Désactiver tous les contrats actifs pour ce bien
@@ -141,14 +162,19 @@ export async function creerContrat(req, res) {
             .single();
 
         if (error) {
-            console.error('Erreur Supabase:', error);
-            return res.status(500).json({ error: 'Erreur serveur' });
+            console.error('Erreur Supabase lors de la création du contrat:', error);
+            return res.status(500).json({
+                error: `Erreur lors de la création du contrat: ${error.message || 'Erreur inconnue'}`,
+                details: error.details || error.hint || ''
+            });
         }
 
         res.json({ contrat });
     } catch (error) {
-        console.error('Erreur:', error);
-        res.status(500).json({ error: 'Erreur serveur' });
+        console.error('Erreur lors de la création du contrat:', error);
+        return res.status(500).json({
+            error: `Erreur lors de la création du contrat: ${error.message || 'Erreur inconnue'}`
+        });
     }
 }
 
@@ -499,6 +525,64 @@ export async function supprimerContrat(req, res) {
         res.json({ success: true });
     } catch (error) {
         console.error('Erreur:', error);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+}
+
+// Récupérer le statut d'invitation d'un contrat
+export async function getInvitationStatus(req, res) {
+    try {
+        const { contratId } = req.params;
+
+        // Récupérer le contrat
+        const { data: contrat, error: contratError } = await supabase
+            .from('contrats')
+            .select('id, locataire_user_id, email_locataire')
+            .eq('id', contratId)
+            .single();
+
+        if (contratError || !contrat) {
+            return res.status(404).json({ error: 'Contrat non trouvé' });
+        }
+
+        // Vérifier si le locataire a un compte (connecté)
+        const locataireConnected = contrat.locataire_user_id != null;
+
+        // Récupérer les invitations pour ce contrat (la plus récente)
+        const { data: invitation } = await supabase
+            .from('invitations_locataires')
+            .select('*')
+            .eq('contrat_id', contratId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+
+        const status = {
+            locataire_connected: locataireConnected,
+            invitation_sent: !!invitation,
+            invitation_accepted: invitation && invitation.accepted_at != null,
+            invitation_expired: false,
+            days_until_expiration: null,
+            invitation_link: null
+        };
+
+        if (invitation) {
+            const expiresAt = new Date(invitation.expires_at);
+            const now = new Date();
+            status.invitation_expired = expiresAt < now && !invitation.accepted_at;
+
+            if (!status.invitation_expired && !invitation.accepted_at) {
+                const daysLeft = Math.ceil((expiresAt - now) / (1000 * 60 * 60 * 24));
+                status.days_until_expiration = daysLeft;
+                // Construire le lien d'invitation
+                const baseUrl = req.protocol + '://' + req.get('host');
+                status.invitation_link = `${baseUrl}/invitation?token=${invitation.token}`;
+            }
+        }
+
+        res.json({ status });
+    } catch (error) {
+        console.error('Erreur lors de la récupération du statut d\'invitation:', error);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 }

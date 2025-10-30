@@ -461,7 +461,7 @@ window.deleteBien = async (id) => {
     try {
         const response = await fetch(`/api/biens/${id}`, { method: 'DELETE' });
         if (!response.ok) throw new Error('Erreur de suppression');
-        loadBiens();
+        await loadBiens();
         showMessage('Bien supprimé');
     } catch (error) {
         showMessage(error.message, 'error');
@@ -554,7 +554,6 @@ async function displayContratActif() {
         const contrats = data.contrats || [];
 
         // Trouver le contrat actif et non archivé
-        // Si le champ archive n'existe pas (undefined/null), on considère que ce n'est pas archivé
         const contratActif = contrats.find(c => c.actif && !c.archive);
 
         if (!contratActif) {
@@ -746,7 +745,10 @@ saveSectionBtn.addEventListener('click', async () => {
         }
 
         const data = await response.json();
-        if (!response.ok) throw new Error(data.error);
+        if (!response.ok) {
+            console.error('Erreur serveur lors de la création/modification de section:', data);
+            throw new Error(data.error || 'Erreur serveur');
+        }
 
         closeModals();
         // Recharger les données et rafraîchir l'affichage sans changer de page
@@ -754,7 +756,8 @@ saveSectionBtn.addEventListener('click', async () => {
         showMessage(editingSectionId ? 'Section modifiée !' : 'Section ajoutée !');
         editingSectionId = null;
     } catch (error) {
-        showMessage(error.message, 'error');
+        console.error('Erreur complète:', error);
+        showMessage(error.message || 'Erreur lors de la création/modification de la section', 'error');
     } finally {
         hideLoading();
     }
@@ -827,13 +830,17 @@ saveObjetBtn.addEventListener('click', async () => {
         });
 
         const data = await response.json();
-        if (!response.ok) throw new Error(data.error);
+        if (!response.ok) {
+            console.error('Erreur serveur lors de la création d\'objet:', data);
+            throw new Error(data.error || 'Erreur serveur');
+        }
 
         closeModals();
         await reloadCurrentBien();
         showMessage('Élément ajouté !');
     } catch (error) {
-        showMessage(error.message, 'error');
+        console.error('Erreur complète:', error);
+        showMessage(error.message || 'Erreur lors de la création de l\'élément', 'error');
     } finally {
         hideLoading();
     }
@@ -1527,7 +1534,10 @@ startEtatBtn.addEventListener('click', async () => {
         });
 
         const data = await response.json();
-        if (!response.ok) throw new Error(data.error);
+        if (!response.ok) {
+            console.error('Erreur serveur lors de la création d\'état des lieux:', data);
+            throw new Error(data.error || 'Erreur serveur');
+        }
 
         closeModals();
         showMessage('État des lieux créé !');
@@ -1535,7 +1545,8 @@ startEtatBtn.addEventListener('click', async () => {
         // Ouvrir directement l'état des lieux créé
         await openEtatDetail(data.etat.id);
     } catch (error) {
-        showMessage(error.message, 'error');
+        console.error('Erreur complète:', error);
+        showMessage(error.message || 'Erreur lors de la création de l\'état des lieux', 'error');
     } finally {
         hideLoading();
     }
@@ -2167,7 +2178,10 @@ saveContratBtn.addEventListener('click', async () => {
         });
 
         const data = await response.json();
-        if (!response.ok) throw new Error(data.error);
+        if (!response.ok) {
+            console.error('Erreur serveur:', data);
+            throw new Error(data.error || 'Erreur serveur');
+        }
 
         showMessage('Contrat créé avec succès !');
         closeModals();
@@ -2176,8 +2190,8 @@ saveContratBtn.addEventListener('click', async () => {
         // Recharger les biens pour mettre à jour le dashboard
         await loadBiens();
     } catch (error) {
-        console.error('Erreur:', error);
-        showMessage('Erreur lors de la création du contrat', 'error');
+        console.error('Erreur complète:', error);
+        showMessage(error.message || 'Erreur lors de la création du contrat', 'error');
     } finally {
         hideLoading();
     }
@@ -2837,14 +2851,17 @@ saveQuittanceBtn.addEventListener('click', async () => {
         });
 
         const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'Erreur lors de la création');
+        if (!response.ok) {
+            console.error('Erreur serveur lors de la création de quittance:', data);
+            throw new Error(data.error || 'Erreur lors de la création');
+        }
 
         showMessage('Quittance créée avec succès !');
         closeModals();
         await loadQuittances();
     } catch (error) {
-        console.error('Erreur:', error);
-        showMessage(error.message, 'error');
+        console.error('Erreur complète:', error);
+        showMessage(error.message || 'Erreur lors de la création de la quittance', 'error');
     } finally {
         hideLoading();
     }

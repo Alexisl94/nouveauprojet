@@ -313,8 +313,11 @@ export async function ajouterObjet(req, res) {
             .single();
 
         if (error) {
-            console.error('Erreur Supabase:', error);
-            return res.status(500).json({ error: 'Erreur serveur' });
+            console.error('Erreur Supabase lors de la création d\'objet:', error);
+            return res.status(500).json({
+                error: `Erreur lors de la création de l'objet: ${error.message || 'Erreur inconnue'}`,
+                details: error.details || error.hint || ''
+            });
         }
 
         res.json({
@@ -571,14 +574,19 @@ export async function ajouterSection(req, res) {
             .single();
 
         if (error) {
-            console.error('Erreur Supabase:', error);
-            return res.status(500).json({ error: 'Erreur serveur' });
+            console.error('Erreur Supabase lors de la création de section:', error);
+            return res.status(500).json({
+                error: `Erreur lors de la création de la section: ${error.message || 'Erreur inconnue'}`,
+                details: error.details || error.hint || ''
+            });
         }
 
         res.json({ section });
     } catch (error) {
         console.error('Erreur lors de l\'ajout de la section:', error);
-        res.status(500).json({ error: 'Erreur serveur' });
+        return res.status(500).json({
+            error: `Erreur lors de la création de la section: ${error.message || 'Erreur inconnue'}`
+        });
     }
 }
 
@@ -755,8 +763,11 @@ export async function creerEtatDesLieux(req, res) {
             .single();
 
         if (etatError) {
-            console.error('Erreur Supabase:', etatError);
-            return res.status(500).json({ error: 'Erreur serveur' });
+            console.error('Erreur Supabase lors de la création d\'état des lieux:', etatError);
+            return res.status(500).json({
+                error: `Erreur lors de la création de l'état des lieux: ${etatError.message || 'Erreur inconnue'}`,
+                details: etatError.details || etatError.hint || ''
+            });
         }
 
         // Insérer les objets dans objets_etat_des_lieux
@@ -798,7 +809,9 @@ export async function creerEtatDesLieux(req, res) {
         });
     } catch (error) {
         console.error('Erreur lors de la création de l\'état des lieux:', error);
-        res.status(500).json({ error: 'Erreur serveur' });
+        return res.status(500).json({
+            error: `Erreur lors de la création de l'état des lieux: ${error.message || 'Erreur inconnue'}`
+        });
     }
 }
 

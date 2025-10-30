@@ -17,46 +17,30 @@ function getExpirationDate() {
 // Envoyer une invitation au locataire
 export async function inviteLocataire(req, res) {
     const { contratId } = req.params;
-    const { id: userId, role } = req.user;
-
-    // Vérifier les permissions (seuls propriétaires/admins peuvent inviter)
-    if (role !== 'proprietaire' && role !== 'administrateur') {
-        return res.status(403).json({ error: 'Accès refusé' });
-    }
 
     try {
-        // Récupérer le contrat
+        // Récupérer le contrat avec informations du bien
         const { data: contrat, error: contratError } = await supabase
             .from('contrats')
             .select(`
                 *,
-                bien:biens(
+                biens!inner (
+                    id,
                     nom,
                     adresse,
-                    proprietaire_id
+                    compte_id
                 )
             `)
             .eq('id', contratId)
             .single();
 
         if (contratError || !contrat) {
+            console.error('Erreur lors de la récupération du contrat:', contratError);
             return res.status(404).json({ error: 'Contrat non trouvé' });
         }
 
-        // Vérifier que l'utilisateur a accès à ce contrat
-        const { data: access } = await supabase
-            .from('administrateurs_globaux')
-            .select('id')
-            .eq('admin_id', userId)
-            .eq('proprietaire_id', contrat.bien.proprietaire_id)
-            .single();
-
-        if (contrat.bien.proprietaire_id !== userId && !access) {
-            return res.status(403).json({ error: 'Accès refusé à ce contrat' });
-        }
-
         // Vérifier qu'il y a bien un email locataire
-        if (!contrat.locataire_email) {
+        if (!contrat.email_locataire) {
             return res.status(400).json({ error: 'Aucun email de locataire renseigné dans le contrat' });
         }
 
@@ -85,7 +69,7 @@ export async function inviteLocataire(req, res) {
             .from('invitations_locataires')
             .insert({
                 contrat_id: contratId,
-                email: contrat.locataire_email,
+                email: contrat.email_locataire,
                 token: token,
                 expires_at: expiresAt
             })
@@ -102,9 +86,9 @@ export async function inviteLocataire(req, res) {
 
         // TODO: Envoyer l'email d'invitation
         // Pour l'instant, on retourne juste le lien (à implémenter avec un service d'email)
-        console.log('📧 Email d\'invitation à envoyer à:', contrat.locataire_email);
+        console.log('📧 Email d\'invitation à envoyer à:', contrat.email_locataire);
         console.log('🔗 Lien d\'invitation:', invitationLink);
-        console.log('📄 Contrat:', contrat.bien.nom, '-', contrat.locataire_nom);
+        console.log('📄 Contrat:', contrat.biens.nom, '-', contrat.nom_locataire, contrat.prenom_locataire);
 
         res.json({
             success: true,
@@ -128,6 +112,8 @@ export async function inviteLocataire(req, res) {
 export async function verifyInvitationToken(req, res) {
     const { token } = req.params;
 
+    console.log('🔍 Vérification invitation avec token:', token);
+
     try {
         const { data: invitation, error } = await supabase
             .from('invitations_locataires')
@@ -135,8 +121,8 @@ export async function verifyInvitationToken(req, res) {
                 *,
                 contrat:contrats(
                     id,
-                    locataire_nom,
-                    locataire_prenom,
+                    nom_locataire,
+                    prenom_locataire,
                     bien:biens(
                         nom,
                         adresse
@@ -146,7 +132,10 @@ export async function verifyInvitationToken(req, res) {
             .eq('token', token)
             .single();
 
+        console.log('📄 Résultat requête invitation:', { invitation, error });
+
         if (error || !invitation) {
+            console.log('❌ Invitation non trouvée, erreur:', error);
             return res.status(404).json({
                 valid: false,
                 error: 'Invitation non trouvée'
@@ -174,8 +163,8 @@ export async function verifyInvitationToken(req, res) {
             valid: true,
             invitation: {
                 email: invitation.email,
-                locataire_nom: invitation.contrat.locataire_nom,
-                locataire_prenom: invitation.contrat.locataire_prenom,
+                locataire_nom: invitation.contrat.nom_locataire,
+                locataire_prenom: invitation.contrat.prenom_locataire,
                 bien: invitation.contrat.bien,
                 expires_at: invitation.expires_at
             }
