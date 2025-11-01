@@ -273,3 +273,114 @@ export async function acceptInvitation(req, res) {
         res.status(500).json({ error: 'Erreur serveur' });
     }
 }
+
+// POST /api/contrats/:contratId/create-locataire-account
+// Créer directement un compte locataire et le lier au contrat (pour tests/dev)
+export async function createLocataireAccount(req, res) {
+    const { contratId } = req.params;
+    const { password } = req.body;
+
+    console.log('🔧 Création compte locataire pour contrat:', contratId);
+
+    if (!password || password.length < 8) {
+        return res.status(400).json({ error: 'Le mot de passe doit contenir au moins 8 caractères' });
+    }
+
+    try {
+        // Récupérer le contrat
+        const { data: contrat, error: contratError } = await supabase
+            .from('contrats')
+            .select('*')
+            .eq('id', contratId)
+            .single();
+
+        if (contratError || !contrat) {
+            return res.status(404).json({ error: 'Contrat non trouvé' });
+        }
+
+        if (!contrat.email_locataire) {
+            return res.status(400).json({ error: 'Aucun email de locataire renseigné dans le contrat' });
+        }
+
+        // Vérifier si le locataire a déjà un compte
+        if (contrat.locataire_user_id) {
+            return res.status(400).json({
+                error: 'Un compte locataire est déjà lié à ce contrat',
+                userId: contrat.locataire_user_id
+            });
+        }
+
+        // Vérifier si un utilisateur existe déjà avec cet email
+        const { data: existingUser } = await supabase
+            .from('utilisateurs')
+            .select('id, role')
+            .eq('email', contrat.email_locataire)
+            .single();
+
+        let userId;
+
+        if (existingUser) {
+            console.log('👤 Utilisateur existant trouvé:', existingUser.id);
+
+            // Mettre à jour son rôle si nécessaire
+            if (existingUser.role !== 'locataire') {
+                await supabase
+                    .from('utilisateurs')
+                    .update({ role: 'locataire' })
+                    .eq('id', existingUser.id);
+            }
+
+            userId = existingUser.id;
+        } else {
+            // Créer le compte locataire
+            const bcrypt = await import('bcrypt');
+            const hashedPassword = await bcrypt.hash(password, 10);
+
+            const { data: newUser, error: userError } = await supabase
+                .from('utilisateurs')
+                .insert({
+                    email: contrat.email_locataire,
+                    nom: contrat.nom_locataire || contrat.email_locataire.split('@')[0],
+                    mot_de_passe_hash: hashedPassword,
+                    role: 'locataire'
+                })
+                .select()
+                .single();
+
+            if (userError) {
+                console.error('❌ Erreur création utilisateur:', userError);
+                return res.status(500).json({ error: 'Erreur lors de la création du compte', details: userError.message });
+            }
+
+            console.log('✅ Nouveau compte créé:', newUser.id);
+            userId = newUser.id;
+        }
+
+        // Lier le contrat à l'utilisateur locataire
+        const { error: contratUpdateError } = await supabase
+            .from('contrats')
+            .update({ locataire_user_id: userId })
+            .eq('id', contratId);
+
+        if (contratUpdateError) {
+            console.error('❌ Erreur liaison contrat:', contratUpdateError);
+            return res.status(500).json({ error: 'Erreur lors de la liaison du contrat', details: contratUpdateError.message });
+        }
+
+        console.log('🔗 Contrat lié au locataire');
+
+        res.json({
+            success: true,
+            message: 'Compte locataire créé et lié au contrat',
+            data: {
+                userId: userId,
+                email: contrat.email_locataire,
+                contratId: contratId
+            }
+        });
+
+    } catch (error) {
+        console.error('❌ Erreur création compte locataire:', error);
+        res.status(500).json({ error: 'Erreur serveur', details: error.message });
+    }
+}

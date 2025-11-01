@@ -403,18 +403,33 @@ export async function genererContratPDF(req, res) {
     try {
         const { contratId } = req.params;
 
+        // Récupérer le contrat avec le bien et le compte
         const { data: contrat, error } = await supabase
             .from('contrats')
-            .select('*, biens(*, proprietaires(*))')
+            .select('*, bien:biens(*, compte:comptes(proprietaire_id))')
             .eq('id', contratId)
             .single();
 
         if (error || !contrat) {
+            console.error('Erreur récupération contrat pour PDF:', error);
             return res.status(404).json({ error: 'Contrat non trouvé' });
         }
 
+        // Récupérer les informations du bailleur
+        const proprietaireId = contrat.bien?.compte?.proprietaire_id;
+        let bailleur = null;
+
+        if (proprietaireId) {
+            const { data: bailleurData } = await supabase
+                .from('bailleurs')
+                .select('*')
+                .eq('proprietaire_id', proprietaireId)
+                .maybeSingle();
+            bailleur = bailleurData;
+        }
+
         // Générer le HTML
-        const html = genererHTMLContrat(contrat, contrat.biens.proprietaires, contrat.biens);
+        const html = genererHTMLContrat(contrat, bailleur, contrat.bien);
 
         // Lancer puppeteer
         browser = await puppeteer.launch({
@@ -442,7 +457,7 @@ export async function genererContratPDF(req, res) {
         // Envoyer le PDF
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename=contrat-${contratId}.pdf`);
-        res.send(pdfBuffer);
+        res.end(pdfBuffer);
 
     } catch (error) {
         console.error('Erreur:', error);

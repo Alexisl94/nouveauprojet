@@ -2,6 +2,7 @@ import express from 'express';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import dotenv from 'dotenv';
+import { exec } from 'child_process';
 
 // Charger les variables d'environnement
 dotenv.config();
@@ -49,11 +50,11 @@ import {
 import { genererPDF, genererPDFEtat } from './api/pdf.js';
 import { obtenirPhotos, uploadPhoto, supprimerPhoto, updatePhotoLegende } from './api/photos.js';
 import { obtenirContrats, creerContrat, archiverContrat, terminerContrat, supprimerContrat, genererContratPDF, getInvitationStatus, obtenirTousLesContrats } from './api/contrats.js';
-import { obtenirQuittances, creerQuittance, supprimerQuittance, obtenirQuittance, envoyerQuittanceEmail } from './api/quittances.js';
+import { obtenirQuittances, creerQuittance, supprimerQuittance, obtenirQuittance, envoyerQuittanceEmail, genererQuittancePDF } from './api/quittances.js';
 import { uploadMiddleware, uploadPhotoToStorage } from './api/upload.js';
 import { obtenirAdministrateurs, ajouterAdministrateur, revoquerAdministrateur, obtenirBiensAccessibles } from './api/administrateurs.js';
 import { obtenirBailleur, upsertBailleur } from './api/bailleur.js';
-import { inviteLocataire, verifyInvitationToken, acceptInvitation } from './api/invitations.js';
+import { inviteLocataire, verifyInvitationToken, acceptInvitation, createLocataireAccount } from './api/invitations.js';
 import {
     getLocataireDashboard,
     getLocataireContratAPI,
@@ -61,7 +62,11 @@ import {
     getLocataireQuittance,
     getLocataireEtatDesLieux,
     getLocatairePhotos,
-    getLocataireBien
+    getLocataireBien,
+    getLocataireContratPDF,
+    getLocataireEtatDesLieuxPDF,
+    getLocataireQuittancePDF,
+    getLocataireEtatDesLieuxByIdPDF
 } from './api/locataire.js';
 
 // Routes d'authentification
@@ -124,6 +129,7 @@ app.delete('/api/contrats/:contratId', supprimerContrat);
 app.get('/api/biens/:bienId/quittances', obtenirQuittances);
 app.post('/api/biens/:bienId/quittances', creerQuittance);
 app.get('/api/quittances/:quittanceId', obtenirQuittance);
+app.get('/api/quittances/:quittanceId/pdf', genererQuittancePDF);
 app.delete('/api/quittances/:quittanceId', supprimerQuittance);
 app.post('/api/quittances/:quittanceId/send', envoyerQuittanceEmail);
 
@@ -141,6 +147,8 @@ app.post('/api/proprietaires/:proprietaireId/bailleur', upsertBailleur);
 app.post('/api/contrats/:contratId/invite-locataire', inviteLocataire);
 app.get('/api/invitations/:token', verifyInvitationToken);
 app.post('/api/invitations/:token/accept', acceptInvitation);
+// Route pour créer directement un compte locataire (pour tests/dev)
+app.post('/api/contrats/:contratId/create-locataire-account', createLocataireAccount);
 
 // Routes pour l'espace locataire
 app.get('/api/locataire/dashboard', getLocataireDashboard);
@@ -151,8 +159,22 @@ app.get('/api/locataire/etat-des-lieux', getLocataireEtatDesLieux);
 app.get('/api/locataire/photos', getLocatairePhotos);
 app.get('/api/locataire/bien', getLocataireBien);
 
+// Routes PDF pour l'espace locataire
+app.get('/api/locataire/contrat/pdf', getLocataireContratPDF);
+app.get('/api/locataire/etat-des-lieux/pdf', getLocataireEtatDesLieuxPDF);
+app.get('/api/locataire/etats-des-lieux/:edlId/pdf', getLocataireEtatDesLieuxByIdPDF);
+app.get('/api/locataire/quittances/:quittanceId/pdf', getLocataireQuittancePDF);
+
 // Démarrer le serveur
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
     console.log(`✅ Serveur démarré sur http://localhost:${PORT}`);
     console.log(`📍 Ouvrez votre navigateur à cette adresse pour voir l'application`);
+
+    // Afficher l'IP WSL pour accès depuis Windows
+    exec('hostname -I', (error, stdout) => {
+        if (!error && stdout) {
+            const wslIp = stdout.trim().split(' ')[0];
+            console.log(`\n🌐 Accès depuis Windows (WSL2): http://${wslIp}:${PORT}`);
+        }
+    });
 });

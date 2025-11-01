@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase.js';
+import puppeteer from 'puppeteer';
 
 // Récupérer toutes les quittances d'un bien
 export async function obtenirQuittances(req, res) {
@@ -284,6 +285,122 @@ export async function envoyerQuittanceEmail(req, res) {
 
     } catch (error) {
         console.error('Erreur:', error);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+}
+
+// Générer le PDF d'une quittance
+export async function genererQuittancePDF(req, res) {
+    let browser;
+    try {
+        const { quittanceId } = req.params;
+
+        const { data: quittance, error } = await supabase
+            .from('quittances')
+            .select('*, contrats(*, biens(*))')
+            .eq('id', quittanceId)
+            .single();
+
+        if (error || !quittance) {
+            console.error('Erreur quittance PDF:', error);
+            return res.status(404).json({ error: 'Quittance non trouvée' });
+        }
+
+        const mois = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 
+                      'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'][quittance.mois - 1];
+        
+        const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Quittance de loyer</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 40px; }
+        h1 { text-align: center; color: #333; }
+        .header { margin-bottom: 30px; }
+        .info { margin: 20px 0; }
+        .info-row { margin: 10px 0; }
+        .label { font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #f5f5f5; }
+        .total { font-weight: bold; font-size: 1.2em; }
+    </style>
+</head>
+<body>
+    <h1>QUITTANCE DE LOYER</h1>
+    
+    <div class="header">
+        <div class="info-row">
+            <span class="label">Période:</span> ${mois} ${quittance.annee}
+        </div>
+        <div class="info-row">
+            <span class="label">Locataire:</span> ${quittance.contrats.nom_locataire} ${quittance.contrats.prenom_locataire}
+        </div>
+        <div class="info-row">
+            <span class="label">Bien:</span> ${quittance.contrats.biens.nom} - ${quittance.contrats.biens.adresse}
+        </div>
+        <div class="info-row">
+            <span class="label">Date de paiement:</span> ${quittance.date_paiement ? new Date(quittance.date_paiement).toLocaleDateString('fr-FR') : 'Non payé'}
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Désignation</th>
+                <th>Montant</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Loyer</td>
+                <td>${quittance.montant_loyer.toFixed(2)} €</td>
+            </tr>
+            <tr>
+                <td>Charges</td>
+                <td>${(quittance.montant_charges || 0).toFixed(2)} €</td>
+            </tr>
+            <tr class="total">
+                <td>TOTAL</td>
+                <td>${quittance.montant_total.toFixed(2)} €</td>
+            </tr>
+        </tbody>
+    </table>
+
+    ${quittance.observations ? `<div class="info"><span class="label">Observations:</span> ${quittance.observations}</div>` : ''}
+    
+    <div style="margin-top: 50px; font-size: 0.9em; color: #666;">
+        <p>Quittance générée le ${new Date().toLocaleDateString('fr-FR')}</p>
+    </div>
+</body>
+</html>
+        `;
+
+        browser = await puppeteer.launch({
+            headless: 'new',
+            args: ['--no-sandbox', '--disable-setuid-sandbox']
+        });
+
+        const page = await browser.newPage();
+        await page.setContent(html, { waitUntil: 'networkidle0' });
+
+        const pdfBuffer = await page.pdf({
+            format: 'A4',
+            printBackground: true,
+            margin: { top: '20mm', right: '20mm', bottom: '20mm', left: '20mm' }
+        });
+
+        await browser.close();
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=quittance-${mois}-${quittance.annee}.pdf`);
+        res.end(pdfBuffer);
+
+    } catch (error) {
+        console.error('Erreur génération PDF quittance:', error);
+        if (browser) await browser.close();
         res.status(500).json({ error: 'Erreur serveur' });
     }
 }

@@ -2,23 +2,38 @@ import { supabase } from '../lib/supabase.js';
 
 // Helper pour récupérer le contrat actif du locataire
 async function getLocataireContrat(locataireUserId) {
-    const { data, error } = await supabase
+    // Récupérer tous les contrats actifs pour ce locataire
+    const { data: contrats, error } = await supabase
         .from('contrats')
         .select(`
             *,
             bien:biens(
                 id,
                 nom,
-                adresse,
-                type,
-                surface
+                adresse
             )
         `)
         .eq('locataire_user_id', locataireUserId)
-        .eq('statut', 'actif')
-        .single();
+        .eq('actif', true)
+        .order('cree_le', { ascending: false });
 
-    return { data, error };
+    // Si erreur, retourner l'erreur
+    if (error) {
+        return { data: null, error };
+    }
+
+    // Si aucun contrat, retourner null
+    if (!contrats || contrats.length === 0) {
+        return { data: null, error: { message: 'Aucun contrat actif trouvé' } };
+    }
+
+    // Si plusieurs contrats, prendre le plus récent
+    if (contrats.length > 1) {
+        console.log(`⚠️ Plusieurs contrats actifs trouvés (${contrats.length}), utilisation du plus récent`);
+    }
+
+    // Retourner le contrat le plus récent
+    return { data: contrats[0], error: null };
 }
 
 // GET /api/locataire/dashboard
@@ -49,7 +64,8 @@ export async function getLocataireDashboard(req, res) {
             .from('quittances')
             .select('*')
             .eq('contrat_id', contrat.id)
-            .order('periode', { ascending: false })
+            .order('annee', { ascending: false })
+            .order('mois', { ascending: false })
             .limit(12);
 
         // Récupérer l'état des lieux d'entrée uniquement
@@ -147,7 +163,8 @@ export async function getLocataireQuittances(req, res) {
             .from('quittances')
             .select('*')
             .eq('contrat_id', contrat.id)
-            .order('periode', { ascending: false });
+            .order('annee', { ascending: false })
+            .order('mois', { ascending: false });
 
         if (error) {
             console.error('Erreur quittances:', error);
@@ -201,14 +218,13 @@ export async function getLocataireQuittance(req, res) {
 }
 
 // GET /api/locataire/etat-des-lieux
-// État des lieux d'entrée uniquement
+// Tous les états des lieux (entrée et sortie)
 export async function getLocataireEtatDesLieux(req, res) {
     const { userId } = req.query;
 
     if (!userId) {
         return res.status(400).json({ error: 'userId requis' });
     }
-
 
     try {
         const { data: contrat } = await getLocataireContrat(userId);
@@ -217,20 +233,19 @@ export async function getLocataireEtatDesLieux(req, res) {
             return res.status(404).json({ error: 'Aucun contrat actif' });
         }
 
-        // Récupérer UNIQUEMENT l'état des lieux d'ENTRÉE
-        const { data: etatDesLieux, error } = await supabase
+        // Récupérer TOUS les états des lieux (entrée et sortie)
+        const { data: etatsDesLieux, error } = await supabase
             .from('etats_des_lieux')
             .select('*')
             .eq('contrat_id', contrat.id)
-            .eq('type', 'entree')
-            .single();
+            .order('date_creation', { ascending: false });
 
-        if (error && error.code !== 'PGRST116') { // PGRST116 = pas de résultat
+        if (error) {
             console.error('Erreur EDL:', error);
-            return res.status(500).json({ error: 'Erreur lors de la récupération de l\'état des lieux' });
+            return res.status(500).json({ error: 'Erreur lors de la récupération des états des lieux' });
         }
 
-        res.json({ etatDesLieux: etatDesLieux || null });
+        res.json({ etatsDesLieux: etatsDesLieux || [] });
 
     } catch (error) {
         console.error('Erreur EDL locataire:', error);
@@ -272,6 +287,158 @@ export async function getLocatairePhotos(req, res) {
 
     } catch (error) {
         console.error('Erreur photos locataire:', error);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+}
+
+// GET /api/locataire/contrat/pdf
+// Télécharger le PDF du contrat
+export async function getLocataireContratPDF(req, res) {
+    const { userId } = req.query;
+
+    console.log('📄 Demande PDF contrat pour userId:', userId);
+
+    if (!userId) {
+        return res.status(400).json({ error: 'userId requis' });
+    }
+
+    try {
+        const { data: contrat, error } = await getLocataireContrat(userId);
+
+        console.log('📄 Résultat getLocataireContrat:', { contrat: contrat?.id, error });
+
+        if (error || !contrat) {
+            console.log('❌ Contrat non trouvé pour le PDF');
+            return res.status(404).json({ error: 'Contrat non trouvé' });
+        }
+
+        console.log('✅ Redirection vers PDF du contrat:', contrat.id);
+        // Rediriger vers la route de génération de PDF du contrat
+        res.redirect(`/api/contrats/${contrat.id}/pdf`);
+
+    } catch (error) {
+        console.error('❌ Erreur PDF contrat locataire:', error);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+}
+
+// GET /api/locataire/etat-des-lieux/pdf
+// Télécharger le PDF de l'état des lieux d'entrée
+export async function getLocataireEtatDesLieuxPDF(req, res) {
+    const { userId } = req.query;
+
+    console.log('📋 Demande PDF EDL pour userId:', userId);
+
+    if (!userId) {
+        return res.status(400).json({ error: 'userId requis' });
+    }
+
+    try {
+        const { data: contrat, error } = await getLocataireContrat(userId);
+
+        console.log('📋 Résultat getLocataireContrat pour EDL:', { contrat: contrat?.id, error });
+
+        if (error || !contrat) {
+            console.log('❌ Contrat non trouvé pour le PDF EDL');
+            return res.status(404).json({ error: 'Contrat non trouvé' });
+        }
+
+        // Récupérer l'état des lieux d'entrée
+        const { data: etatDesLieux, error: edlError } = await supabase
+            .from('etats_des_lieux')
+            .select('id, bien_id')
+            .eq('contrat_id', contrat.id)
+            .eq('type', 'entree')
+            .single();
+
+        console.log('📋 État des lieux trouvé:', { edl: etatDesLieux?.id, error: edlError });
+
+        if (edlError || !etatDesLieux) {
+            return res.status(404).json({ error: 'État des lieux d\'entrée non trouvé' });
+        }
+
+        console.log('✅ Redirection vers PDF de l\'EDL:', etatDesLieux.id);
+        // Rediriger vers la route de génération de PDF de l'état des lieux
+        res.redirect(`/api/biens/${etatDesLieux.bien_id}/etats-des-lieux/${etatDesLieux.id}/pdf`);
+
+    } catch (error) {
+        console.error('❌ Erreur PDF état des lieux locataire:', error);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+}
+
+// GET /api/locataire/quittances/:quittanceId/pdf
+// Télécharger le PDF d'une quittance spécifique
+export async function getLocataireQuittancePDF(req, res) {
+    const { userId } = req.query;
+    const { quittanceId } = req.params;
+
+    if (!userId) {
+        return res.status(400).json({ error: 'userId requis' });
+    }
+
+    try {
+        const { data: contrat } = await getLocataireContrat(userId);
+
+        if (!contrat) {
+            return res.status(404).json({ error: 'Aucun contrat actif' });
+        }
+
+        // Vérifier que la quittance appartient bien au contrat du locataire
+        const { data: quittance, error } = await supabase
+            .from('quittances')
+            .select('id, contrat_id')
+            .eq('id', quittanceId)
+            .eq('contrat_id', contrat.id)
+            .single();
+
+        if (error || !quittance) {
+            return res.status(404).json({ error: 'Quittance non trouvée ou non autorisée' });
+        }
+
+        // Rediriger vers la route de génération de PDF
+        res.redirect(`/api/quittances/${quittanceId}/pdf`);
+
+    } catch (error) {
+        console.error('Erreur PDF quittance locataire:', error);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+}
+
+// GET /api/locataire/etats-des-lieux/:edlId/pdf
+// Télécharger le PDF d'un état des lieux spécifique
+export async function getLocataireEtatDesLieuxByIdPDF(req, res) {
+    const { userId } = req.query;
+    const { edlId } = req.params;
+
+    if (!userId) {
+        return res.status(400).json({ error: 'userId requis' });
+    }
+
+    try {
+        const { data: contrat } = await getLocataireContrat(userId);
+
+        if (!contrat) {
+            return res.status(404).json({ error: 'Aucun contrat actif' });
+        }
+
+        // Vérifier que l'état des lieux appartient bien au contrat du locataire
+        const { data: etatDesLieux, error } = await supabase
+            .from('etats_des_lieux')
+            .select('id, bien_id, contrat_id')
+            .eq('id', edlId)
+            .eq('contrat_id', contrat.id)
+            .single();
+
+        if (error || !etatDesLieux) {
+            return res.status(404).json({ error: 'État des lieux non trouvé ou non autorisé' });
+        }
+
+        // Rediriger vers la route de génération de PDF
+        res.redirect(`/api/biens/${etatDesLieux.bien_id}/etats-des-lieux/${edlId}/pdf`);
+
+    } catch (error) {
+        console.error('Erreur PDF état des lieux locataire:', error);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 }

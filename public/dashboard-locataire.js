@@ -97,14 +97,6 @@ function displayDashboard() {
                 <span class="info-label">Adresse</span>
                 <span class="info-value">${dashboardData.bien.adresse || '-'}</span>
             </div>
-            <div class="info-row">
-                <span class="info-label">Type</span>
-                <span class="info-value">${dashboardData.bien.type || '-'}</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">Surface</span>
-                <span class="info-value">${dashboardData.bien.surface ? dashboardData.bien.surface + ' m²' : '-'}</span>
-            </div>
         `;
     } else {
         bienInfo.innerHTML = '<div class="empty-state"><p>Aucune information disponible</p></div>';
@@ -124,13 +116,17 @@ function displayDashboard() {
                         </tr>
                     </thead>
                     <tbody>
-                        ${dashboardData.quittances_recentes.map(q => `
+                        ${dashboardData.quittances_recentes.map(q => {
+                            const statut = q.date_paiement ? 'Payée' : 'En attente';
+                            const badgeClass = q.date_paiement ? 'success' : 'warning';
+                            return `
                             <tr>
-                                <td>${formatPeriod(q.periode)}</td>
+                                <td>${formatPeriod(q)}</td>
                                 <td>${formatCurrency(q.montant_total)}</td>
-                                <td><span class="badge ${q.statut === 'payee' ? 'success' : 'warning'}">${q.statut}</span></td>
+                                <td><span class="badge ${badgeClass}">${statut}</span></td>
                             </tr>
-                        `).join('')}
+                            `;
+                        }).join('')}
                     </tbody>
                 </table>
             </div>
@@ -187,6 +183,9 @@ async function loadSection(sectionName) {
             break;
         case 'bien':
             await loadBien();
+            break;
+        case 'documents':
+            await loadDocuments();
             break;
     }
 }
@@ -250,14 +249,6 @@ async function loadContrat() {
                 <span class="info-label">Adresse</span>
                 <span class="info-value">${bien.adresse || '-'}</span>
             </div>
-            <div class="info-row">
-                <span class="info-label">Type</span>
-                <span class="info-value">${bien.type || '-'}</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">Surface</span>
-                <span class="info-value">${bien.surface ? bien.surface + ' m²' : '-'}</span>
-            </div>
         </div>
     `;
 }
@@ -288,15 +279,19 @@ async function loadQuittances() {
                             </tr>
                         </thead>
                         <tbody>
-                            ${data.quittances.map(q => `
+                            ${data.quittances.map(q => {
+                                const statut = q.date_paiement ? 'Payée' : 'En attente';
+                                const badgeClass = q.date_paiement ? 'success' : 'warning';
+                                return `
                                 <tr>
-                                    <td>${formatPeriod(q.periode)}</td>
+                                    <td>${formatPeriod(q)}</td>
                                     <td>${formatCurrency(q.montant_loyer)}</td>
                                     <td>${formatCurrency(q.montant_charges || 0)}</td>
                                     <td><strong>${formatCurrency(q.montant_total)}</strong></td>
-                                    <td><span class="badge ${q.statut === 'payee' ? 'success' : 'warning'}">${q.statut}</span></td>
+                                    <td><span class="badge ${badgeClass}">${statut}</span></td>
                                 </tr>
-                            `).join('')}
+                                `;
+                            }).join('')}
                         </tbody>
                     </table>
                 </div>
@@ -422,14 +417,6 @@ async function loadBien() {
             <span class="info-label">Adresse</span>
             <span class="info-value">${bien.adresse || '-'}</span>
         </div>
-        <div class="info-row">
-            <span class="info-label">Type</span>
-            <span class="info-value">${bien.type || '-'}</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">Surface</span>
-            <span class="info-value">${bien.surface ? bien.surface + ' m²' : '-'}</span>
-        </div>
 
         ${bien.description ? `
             <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border-primary);">
@@ -499,6 +486,17 @@ function formatDate(dateStr) {
 
 function formatPeriod(period) {
     if (!period) return '-';
+
+    // Si c'est un objet avec mois et annee
+    if (typeof period === 'object' && period.mois && period.annee) {
+        const date = new Date(period.annee, period.mois - 1);
+        return new Intl.DateTimeFormat('fr-FR', {
+            year: 'numeric',
+            month: 'long'
+        }).format(date);
+    }
+
+    // Sinon format string "YYYY-MM"
     const [year, month] = period.split('-');
     const date = new Date(year, month - 1);
     return new Intl.DateTimeFormat('fr-FR', {
@@ -533,4 +531,179 @@ function showError(sectionId, message) {
             </div>
         `;
     }
+}
+
+// ==========================================
+// FONCTIONS POUR LA GESTION DES PDFs
+// ==========================================
+
+// Télécharger le PDF du contrat
+function downloadContrat() {
+    window.open(`${API_BASE}/api/locataire/contrat/pdf?userId=${currentUser.id}`, '_blank');
+}
+
+// Télécharger le PDF de l'état des lieux
+function downloadEtatDesLieux() {
+    window.open(`${API_BASE}/api/locataire/etat-des-lieux/pdf?userId=${currentUser.id}`, '_blank');
+}
+
+// Charger et afficher les quittances en vue liste moderne
+async function loadQuittancesCards() {
+    const listElement = document.getElementById('quittances-list');
+
+    try {
+        const response = await fetch(`${API_BASE}/api/locataire/quittances?userId=${currentUser.id}`);
+
+        if (!response.ok) throw new Error('Erreur lors du chargement des quittances');
+
+        const data = await response.json();
+
+        if (data.quittances && data.quittances.length > 0) {
+            // Afficher toutes les quittances en vue liste
+            listElement.innerHTML = data.quittances.map(q => {
+                const isPaid = !!q.date_paiement;
+                const statutText = isPaid ? 'Payée' : 'En attente';
+                const badgeClass = isPaid ? 'paid' : 'pending';
+                const iconBg = isPaid ? '#DCFCE7' : '#FEF3C7';
+                const iconColor = isPaid ? '#059669' : '#D97706';
+
+                return `
+                <div class="quittance-list-item">
+                    <div class="quittance-period">
+                        <div class="quittance-period-icon" style="background: ${iconBg}; color: ${iconColor};">
+                            <i class="fas fa-receipt"></i>
+                        </div>
+                        <div class="quittance-period-text">
+                            <h4>${formatPeriod(q)}</h4>
+                            <p>${isPaid && q.date_paiement ? 'Payée le ' + new Date(q.date_paiement).toLocaleDateString('fr-FR') : 'En attente de paiement'}</p>
+                        </div>
+                    </div>
+                    <div class="quittance-amount">
+                        ${formatCurrency(q.montant_total)}
+                    </div>
+                    <div>
+                        <span class="quittance-status-badge ${badgeClass}">
+                            <i class="fas fa-circle"></i>
+                            ${statutText}
+                        </span>
+                    </div>
+                    <div style="display: flex; justify-content: flex-end;">
+                        <button class="quittance-download-btn" onclick="downloadQuittance('${q.id}')" title="Télécharger">
+                            <i class="fas fa-download"></i>
+                        </button>
+                    </div>
+                </div>
+                `;
+            }).join('');
+        } else {
+            listElement.innerHTML = `
+                <div class="quittances-empty-state">
+                    <i class="fas fa-receipt"></i>
+                    <p>Aucune quittance disponible pour le moment</p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Erreur:', error);
+        listElement.innerHTML = `
+            <div class="quittances-empty-state">
+                <i class="fas fa-exclamation-circle" style="color: #EF4444;"></i>
+                <p>Erreur lors du chargement des quittances</p>
+            </div>
+        `;
+    }
+}
+
+// Télécharger une quittance spécifique
+function downloadQuittance(quittanceId) {
+    window.open(`${API_BASE}/api/locataire/quittances/${quittanceId}/pdf?userId=${currentUser.id}`, '_blank');
+}
+
+// Charger et afficher les états des lieux en vue liste
+async function loadEtatsDesLieuxList() {
+    const listElement = document.getElementById('edl-list');
+
+    try {
+        const response = await fetch(`${API_BASE}/api/locataire/etat-des-lieux?userId=${currentUser.id}`);
+
+        if (!response.ok) throw new Error('Erreur lors du chargement des états des lieux');
+
+        const data = await response.json();
+
+        if (data.etatsDesLieux && data.etatsDesLieux.length > 0) {
+            // Afficher tous les états des lieux en vue liste
+            listElement.innerHTML = data.etatsDesLieux.map(edl => {
+                const typeText = edl.type === 'entree' ? "État des lieux d'entrée" : "État des lieux de sortie";
+                const statutText = 'Disponible';
+                const badgeClass = 'paid';
+                const iconBg = edl.type === 'entree' ? '#DBEAFE' : '#FCE7F3';
+                const iconColor = edl.type === 'entree' ? '#2563EB' : '#DB2777';
+
+                return `
+                <div class="quittance-list-item">
+                    <div class="quittance-period">
+                        <div class="quittance-period-icon" style="background: ${iconBg}; color: ${iconColor};">
+                            <i class="fas fa-clipboard-check"></i>
+                        </div>
+                        <div class="quittance-period-text">
+                            <h4>${typeText}</h4>
+                            <p>${edl.date_creation ? 'Créé le ' + new Date(edl.date_creation).toLocaleDateString('fr-FR') : 'Date non renseignée'}</p>
+                        </div>
+                    </div>
+                    <div class="quittance-amount" style="font-size: 14px; font-weight: 500;">
+                        ${edl.date_creation ? new Date(edl.date_creation).toLocaleDateString('fr-FR') : 'N/A'}
+                    </div>
+                    <div>
+                        <span class="quittance-status-badge ${badgeClass}">
+                            <i class="fas fa-circle"></i>
+                            ${statutText}
+                        </span>
+                    </div>
+                    <div style="display: flex; justify-content: flex-end;">
+                        <button class="quittance-download-btn" onclick="downloadEtatDesLieuxById('${edl.id}')" title="Télécharger">
+                            <i class="fas fa-download"></i>
+                        </button>
+                    </div>
+                </div>
+                `;
+            }).join('');
+        } else {
+            listElement.innerHTML = `
+                <div class="quittances-empty-state">
+                    <i class="fas fa-clipboard-check"></i>
+                    <p>Aucun état des lieux disponible pour le moment</p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Erreur:', error);
+        listElement.innerHTML = `
+            <div class="quittances-empty-state">
+                <i class="fas fa-exclamation-circle" style="color: #EF4444;"></i>
+                <p>Erreur lors du chargement des états des lieux</p>
+            </div>
+        `;
+    }
+}
+
+// Télécharger un état des lieux spécifique par son ID
+function downloadEtatDesLieuxById(edlId) {
+    window.open(`${API_BASE}/api/locataire/etats-des-lieux/${edlId}/pdf?userId=${currentUser.id}`, '_blank');
+}
+
+// Charger la section documents
+async function loadDocuments() {
+    // Setup des event listeners pour les boutons de téléchargement
+    const btnContrat = document.getElementById('btn-download-contrat');
+
+    if (btnContrat) {
+        btnContrat.addEventListener('click', (e) => {
+            e.preventDefault();
+            downloadContrat();
+        });
+    }
+
+    // Charger automatiquement les états des lieux et les quittances
+    await loadEtatsDesLieuxList();
+    await loadQuittancesCards();
 }
