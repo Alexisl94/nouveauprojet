@@ -199,198 +199,597 @@ function genererHTMLContrat(contrat, proprietaire, bien) {
   <meta charset="utf-8" />
   <title>Contrat de location</title>
   <style>
-    /* ——— Mise en page A4 ——— */
-    @page { size: A4; margin: 18mm 18mm 20mm 18mm; }
-    html, body {
-      margin: 0; padding: 0;
-      font-family: "Times New Roman", Times, serif;
-      font-size: 11pt; line-height: 1.35; color: #000;
-      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    @page {
+      size: A4;
+      margin: 20mm 0 25mm 0;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Helvetica', 'Arial', sans-serif;
+      font-size: 10pt;
+      line-height: 1.5;
+      color: #0F172A;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+      position: relative;
+      min-height: 100vh;
     }
 
-    /* ——— Titres ——— */
-    h1, h2 { margin: 0 0 8pt 0; font-weight: bold; }
-    h1 { font-size: 16pt; text-transform: uppercase; text-align: center; margin-bottom: 10pt; }
-    h2 { font-size: 12.5pt; margin-top: 14pt; }
+    /* ——— Header ——— */
+    .header {
+      background: linear-gradient(135deg, #3E8914 0%, #2d7a45 100%);
+      color: white;
+      padding: 30px 40px;
+      text-align: center;
+      position: relative;
+      page-break-after: avoid;
+      margin-top: -20mm;
+      margin-left: -0mm;
+      margin-right: -0mm;
+    }
+
+    .header h1 {
+      font-size: 24pt;
+      font-weight: 700;
+      margin: 0 0 8px 0;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .header .subtitle {
+      font-size: 11pt;
+      opacity: 0.95;
+      font-weight: 400;
+    }
+
+    /* ——— Content ——— */
+    .content {
+      padding: 30px 40px 100px 40px;
+      background: #F8FAFB;
+      min-height: calc(100vh - 200px);
+    }
+
+    /* Sections principales */
+    .section {
+      page-break-inside: avoid;
+      margin-bottom: 30px;
+      background: white;
+      padding: 24px;
+      border-radius: 8px;
+      border: 1px solid #E2E8F0;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    }
+
+    .card {
+      background: white;
+      padding: 20px;
+      margin: 16px 0;
+      border-radius: 8px;
+      border: 1px solid #E2E8F0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      page-break-inside: avoid;
+    }
+
+    .section-title {
+      font-size: 14pt;
+      font-weight: 700;
+      color: #3E8914;
+      margin: 0 0 16px 0;
+      padding-bottom: 8px;
+      border-bottom: 3px solid #3E8914;
+      page-break-after: avoid;
+      background: #F0FDF4;
+      padding: 12px 16px;
+      border-radius: 6px 6px 0 0;
+      margin: -24px -24px 20px -24px;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin: 16px 0;
+    }
+
+    .info-block {
+      background: #F0FDF4;
+      padding: 16px;
+      border-radius: 6px;
+      border-left: 3px solid #3E8914;
+    }
+
+    .info-label {
+      font-size: 9pt;
+      color: #64748B;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+      font-weight: 600;
+    }
+
+    .info-value {
+      font-size: 11pt;
+      color: #0F172A;
+      font-weight: 600;
+    }
 
     /* ——— Paragraphes & listes ——— */
-    p { margin: 0 0 8pt 0; }
-    ul { margin: 6pt 0 6pt 18pt; }
-    .small { font-size: 10pt; color: #111; }
+    p {
+      margin: 0 0 12px 0;
+      text-align: justify;
+    }
 
-    /* ——— Blocs & utilitaires ——— */
-    .block { margin-bottom: 10pt; }
-    .label { font-weight: bold; }
-    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12pt; }
-    .field { margin: 2pt 0; }
+    ul {
+      margin: 8px 0 12px 20px;
+      padding: 0;
+    }
+
+    li {
+      margin: 6px 0;
+    }
+
+    .small {
+      font-size: 9pt;
+      color: #475569;
+      line-height: 1.4;
+    }
+
+    .label {
+      font-weight: 700;
+      color: #1E293B;
+    }
+
+    /* ——— Footer ——— */
+    .footer {
+      background: #0F172A;
+      color: white;
+      padding: 20px 40px;
+      text-align: center;
+      font-size: 9pt;
+      line-height: 1.6;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      width: 100%;
+    }
+
+    .footer strong {
+      font-size: 10pt;
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    /* ——— Signatures ——— */
+    .signatures {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+      margin: 30px 0;
+      padding: 20px;
+      background: white;
+      border-radius: 8px;
+    }
+
+    .signature-box {
+      text-align: center;
+    }
+
+    .signature-label {
+      font-weight: 700;
+      margin-bottom: 40px;
+      color: #1E293B;
+    }
+
+    .signature-line {
+      border-top: 2px solid #0F172A;
+      padding-top: 8px;
+      font-size: 9pt;
+      color: #64748B;
+    }
+
     .page-break { page-break-after: always; }
-    .signature-box { height: 60px; border-top: 1px solid #000; margin-top: 24pt; }
-    .spacer-lg { margin-top: 20pt; }
+    .spacer { margin-top: 16px; }
   </style>
 </head>
 <body>
 
-  <h1>CONTRAT DE LOCATION</h1>
-
-  <p class="small">
-    (Soumis au titre Ier bis de la loi du 6 juillet 1989 tendant à améliorer les rapports locatifs et portant
-    modification de la loi n° 86-1290 du 23 décembre 1986)
-  </p>
-
-  <p class="small">
-    <strong>Modalités d'application du contrat :</strong> Le régime de droit commun en matière de baux d'habitation est défini principalement
-    par la loi n° 89-462 du 6 juillet 1989 tendant à améliorer les rapports locatifs et portant modification de la loi n° 86-1290 du 23 décembre 1986.
-    L'ensemble de ces dispositions étant d'ordre public, elles s'imposent aux parties qui, en principe, ne peuvent pas y renoncer.
-  </p>
-
-  <p class="small">
-    En conséquence :
-    <br>- le présent contrat de location contient uniquement les clauses essentielles du contrat dont la législation et la réglementation en vigueur
-    au jour de sa publication imposent la mention par les parties dans le contrat. Il appartient cependant aux parties de s'assurer des dispositions
-    applicables au jour de la conclusion du contrat.
-    <br>- au-delà de ces clauses, les parties sont également soumises à l'ensemble des dispositions légales et réglementaires d'ordre public applicables aux baux d'habitation
-    sans qu'il soit nécessaire de les faire figurer dans le contrat et qui sont rappelées utilement dans la notice d'information qui doit être jointe à chaque contrat.
-    <br>- les parties sont libres de prévoir dans le contrat d'autres clauses particulières, propres à chaque location, dans la mesure où celles-ci sont conformes aux dispositions législatives
-    et réglementaires en vigueur. Les parties peuvent également convenir de l'utilisation de tout autre support pour établir leur contrat, dans le respect du présent contrat type.
-  </p>
-
-  <h2>DÉSIGNATION DES PARTIES</h2>
-
-  <p><strong>Le présent contrat est conclu entre les soussignés :</strong></p>
-
-  <div class="block">
-    <p><strong>SARL ALCAYAMA,</strong></p>
-    <p>38 rue du moulin bâtard, 44490, Le Croisic,</p>
-    <p>personne morale inscrite au RCS au numéro 892 739 764</p>
-    <p>Mail : alcamaya.contact@gmail.com</p>
-    <p>désigné(s) ci-après «&nbsp;le bailleur&nbsp;».</p>
+  <div class="header">
+    <h1>Contrat de Location</h1>
+    <div class="subtitle">Document légal établi le ${aujourdhui}</div>
   </div>
 
-  <div class="block">
-    <p>Nom : ${contrat.nom_locataire || 'Non renseigné'}</p>
-    <p>Prénom : ${contrat.prenom_locataire || 'Non renseigné'}</p>
-    <p>Mail : ${contrat.email_locataire || 'Non renseigné'}</p>
-    <p>désigné(s) ci-après «&nbsp;le locataire&nbsp;».</p>
+  <div class="content">
+    <div class="card">
+      <p class="small">
+        <strong>(Soumis au titre Ier bis de la loi du 6 juillet 1989 tendant à améliorer les rapports locatifs et portant modification de la loi n° 86-1290 du 23 décembre 1986)</strong>
+      </p>
+      <div class="spacer"></div>
+      <p class="small">
+        <strong>Modalités d'application du contrat :</strong> Le régime de droit commun en matière de baux d'habitation est défini principalement
+        par la loi n° 89-462 du 6 juillet 1989 tendant à améliorer les rapports locatifs et portant modification de la loi n° 86-1290 du 23 décembre 1986.
+        L'ensemble de ces dispositions étant d'ordre public, elles s'imposent aux parties qui, en principe, ne peuvent pas y renoncer.
+      </p>
+      <div class="spacer"></div>
+      <p class="small"><strong>En conséquence :</strong></p>
+      <ul class="small">
+        <li>le présent contrat de location contient uniquement les clauses essentielles du contrat dont la législation et la réglementation en vigueur au jour de sa publication imposent la mention par les parties dans le contrat. Il appartient cependant aux parties de s'assurer des dispositions applicables au jour de la conclusion du contrat.</li>
+        <li>au-delà de ces clauses, les parties sont également soumises à l'ensemble des dispositions légales et réglementaires d'ordre public applicables aux baux d'habitation sans qu'il soit nécessaire de les faire figurer dans le contrat et qui sont rappelées utilement dans la notice d'information qui doit être jointe à chaque contrat.</li>
+        <li>les parties sont libres de prévoir dans le contrat d'autres clauses particulières, propres à chaque location, dans la mesure où celles-ci sont conformes aux dispositions législatives et réglementaires en vigueur. Les parties peuvent également convenir de l'utilisation de tout autre support pour établir leur contrat, dans le respect du présent contrat type.</li>
+      </ul>
+      <div class="spacer"></div>
+      <p class="small">
+        Le présent contrat est conclu au titre d'un <strong>bail d'habitation meublé</strong> constituant la résidence principale du locataire,
+        conformément aux articles 25-3 et suivants de la loi du 6 juillet 1989.
+      </p>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">DÉSIGNATION DES PARTIES</h2>
+
+      <p><strong>Le présent contrat est conclu entre les soussignés :</strong></p>
+
+      <div class="info-grid">
+        <div class="info-block">
+          <div class="info-label">Le Bailleur</div>
+          <div class="info-value">SARL ALCAYAMA</div>
+          <p style="margin-top: 8px; font-size: 9pt; color: #475569;">
+            38 rue du moulin bâtard<br>
+            44490 Le Croisic<br>
+            RCS : 892 739 764<br>
+            Mail : alcamaya.contact@gmail.com
+          </p>
+          <p style="margin-top: 8px; font-size: 9pt;">désigné(s) ci-après « <strong>le bailleur</strong> ».</p>
+        </div>
+
+        <div class="info-block">
+          <div class="info-label">Le Locataire</div>
+          <div class="info-value">${contrat.prenom_locataire || 'Non renseigné'} ${contrat.nom_locataire || 'Non renseigné'}</div>
+          <p style="margin-top: 8px; font-size: 9pt; color: #475569;">
+            ${contrat.email_locataire ? 'Mail : ' + contrat.email_locataire : 'Email non renseigné'}
+          </p>
+          <p style="margin-top: 8px; font-size: 9pt;">désigné(s) ci-après « <strong>le locataire</strong> ».</p>
+        </div>
+      </div>
+
+      <p style="margin-top: 16px;">Le locataire déclare louer le logement à titre de <strong>résidence principale</strong> au sens de l'article 2 de la loi du 6 juillet 1989.</p>
+      <p style="margin-top: 12px;"><strong>Il a été convenu ce qui suit :</strong></p>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">II. OBJET DU CONTRAT</h2>
+
+      <p>Le présent contrat a pour objet la location d'un logement ainsi déterminé :</p>
+
+      <div class="card">
+        <p class="label">A. Consistance du logement</p>
+        <ul>
+          <li><strong>localisation du logement :</strong> 11 rue Marcel Deplantay, ${contrat.numero_chambre || 'Non renseigné'}</li>
+          <li><strong>type d'habitat :</strong> Immeuble collectif</li>
+          <li><strong>régime juridique de l'immeuble :</strong> Mono-propriété</li>
+          <li><strong>période de construction :</strong> avant 1949</li>
+          <li><strong>surface habitable :</strong> 180 m² (surface totale du logement). La partie mise à disposition en jouissance privative du locataire correspond à une chambre d'environ [À RENSEIGNER] m².</li>
+          <li><strong>objet de la location :</strong> jouissance privative de la chambre désignée ci-dessus et jouissance commune et non exclusive des pièces et équipements suivants :
+            <ul style="margin-left: 20px; margin-top: 6px;">
+              <li>cuisine partagée</li>
+              <li>salon</li>
+              <li>WC</li>
+              <li>salle de bain</li>
+              <li>jardin</li>
+            </ul>
+          </li>
+          <li><strong>le cas échéant, Éléments d'équipements du logement :</strong> salon équipé, cuisine équipée, salle de bain équipée, jardin équipé</li>
+          <li><strong>modalité de production chauffage :</strong> électrique collectif</li>
+          <li><strong>modalité de production d'eau chaude sanitaire :</strong> électrique collectif</li>
+        </ul>
+        <p style="margin-top: 12px; font-style: italic; color: #64748B;">
+          Il est expressément précisé que le présent contrat ne confère pas la jouissance exclusive de l'intégralité du logement mais uniquement de la chambre désignée, les autres parties étant communes aux autres occupants.
+        </p>
+      </div>
+
+      <div class="card">
+        <p class="label">B. Destination des locaux</p>
+        <p>Usage d'habitation.</p>
+        <p style="margin-top: 8px;">Toute affectation professionnelle ou commerciale est interdite sans accord écrit du bailleur.</p>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">III. DATE DE PRISE D'EFFET ET DURÉE DU CONTRAT</h2>
+
+      <p>La durée du contrat et sa date de prise d'effet sont ainsi définies :</p>
+
+      <div class="info-grid">
+        <div class="info-block">
+          <div class="info-label">A. Date de prise d'effet du contrat</div>
+          <div class="info-value">${dateDebut}</div>
+        </div>
+        <div class="info-block">
+          <div class="info-label">B. Date de fin d'effet du contrat</div>
+          <div class="info-value">${dateFin}</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <p class="label">C. Durée du contrat : ${duree}</p>
+        <p style="margin-top: 8px; font-size: 9pt; color: #64748B;">(bail meublé d'une durée minimale légale de 1 an renouvelable tacitement, sauf mention contraire ci-dessus ou cas d'un locataire étudiant – 9 mois non reconductible).</p>
+        <div class="spacer"></div>
+        <p>À défaut de congé donné dans les formes et délais légaux par l'une ou l'autre des parties, le bail est reconduit tacitement dans les conditions prévues par la loi.</p>
+        <p style="margin-top: 8px;"><strong>Le locataire peut mettre fin au bail à tout moment, après avoir donné un préavis d'un mois.</strong></p>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">IV. CONDITIONS FINANCIÈRES</h2>
+
+      <p>Les parties conviennent des conditions financières suivantes :</p>
+
+      <div class="card">
+        <p class="label">A. Loyer</p>
+        <p style="margin-top: 8px;"><strong>Fixation du loyer initial :</strong></p>
+        <div class="spacer"></div>
+        <div style="background: #F0FDF4; padding: 16px; border-radius: 6px; border-left: 4px solid #3E8914;">
+          <div style="font-size: 11pt; color: #64748B; margin-bottom: 4px;">Montant du loyer mensuel</div>
+          <div style="font-size: 18pt; font-weight: 700; color: #3E8914;">${contrat.loyer ? contrat.loyer + ' €' : 'Non défini'}</div>
+          <div style="font-size: 9pt; color: #64748B; margin-top: 4px;">Toutes charges incluses</div>
+        </div>
+        <p style="margin-top: 12px;">Le loyer comprend les charges récupérables suivantes : électricité, eau, charges de propriété, entretien des parties communes, ainsi que l'accès et l'usage normal des équipements communs.</p>
+      </div>
+
+      <div class="card">
+        <p class="label">B. Modalités de paiement</p>
+        <ul>
+          <li><strong>méthode de paiement :</strong> transfert bancaire</li>
+          <li><strong>date de paiement :</strong> le locataire s'engage à réaliser des transferts du montant du loyer avant le 5 de chaque mois</li>
+          <li><strong>les charges incluent</strong> comprennent l'électricité, l'eau ainsi que l'ensemble des charges de propriété</li>
+          <li><strong>les charges sont forfaitaires</strong> au sens de la réglementation sur les baux meublés (sauf mention contraire) et ne donnent pas lieu à régularisation, sauf usage manifestement abusif</li>
+          <li class="small">⚠️ <strong>Les charges comprises au contrat n'incluent pas la consommation liée au chargement de véhicules électriques</strong> (voiture, trottinette, vélo, etc.), laquelle pourra faire l'objet d'une facturation supplémentaire. Cette facturation fera l'objet d'un décompte ou forfait complémentaire communiqué au locataire.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">V. TRAVAUX</h2>
+      <div class="card">
+        <p>Le locataire s'engage à ne pas réaliser de travaux de tout ordre dans le logement sans l'accord préalable du bailleur.</p>
+        <p style="margin-top: 8px;">Toute transformation des lieux, percement, ajout d'appareil consommateur d'énergie ou modification des parties communes est subordonné à un accord écrit du bailleur.</p>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">VI. GARANTIES</h2>
+      <div class="card">
+        <div style="background: #F0FDF4; padding: 16px; border-radius: 6px; border-left: 4px solid #3E8914; margin-bottom: 12px;">
+          <div style="font-size: 10pt; color: #64748B; margin-bottom: 4px;">Dépôt de garantie</div>
+          <div style="font-size: 16pt; font-weight: 700; color: #3E8914;">${contrat.depot_garantie ? contrat.depot_garantie + ' €' : contrat.loyer + ' €'}</div>
+        </div>
+        <p>
+          Le locataire dépose un chèque de caution ou effectue un virement bancaire d'une valeur égale à un mois de loyer (${contrat.loyer ? contrat.loyer + ' €' : 'Non défini'}),
+          qui sera encaissé puis rendu par le bailleur au terme du présent contrat.
+        </p>
+        <p style="margin-top: 8px;">En cas de dégradation de l'immeuble, ou de meubles composant le logement, la valeur des dommages sera soustraite au montant rendu.</p>
+        <p style="margin-top: 8px;">Le dépôt de garantie sera restitué dans le délai légal applicable (1 mois si l'état des lieux de sortie est conforme, 2 mois en cas de retenues justifiées), déduction faite, le cas échéant, des sommes restant dues par le locataire ou des réparations locatives.</p>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">VII. CLAUSE RÉSOLUTOIRE</h2>
+      <div class="card">
+        <p>
+          Il est expressément convenu qu'à défaut de paiement du dépôt de garantie, d'un seul terme de loyer ou des charges à leur échéance et deux mois après un
+          commandement de payer demeuré infructueux, le bail sera résilié de plein droit si bon semble au bailleur.
+        </p>
+        <p style="margin-top: 12px;">
+          L'une ou plusieurs des conditions particulières suivantes (X), ne sont pas respectées, les propriétaires sont également dans leur bon droit de résilier le contrat de plein droit, utilisant cette condition comme clause résolutoire.
+        </p>
+        <p style="margin-top: 8px; font-size: 9pt; color: #64748B; font-style: italic;">
+          Les clauses résolutoires s'appliquent dans les conditions de l'article 24 de la loi du 6 juillet 1989 (commandement de faire ou de payer délivré par huissier, délai laissé au locataire, saisine éventuelle du juge).
+        </p>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">X. AUTRES CONDITIONS PARTICULIÈRES</h2>
+
+      <div class="card">
+        <p class="label">A. Condition(s) relative(s) à la sous-location</p>
+        <p>
+          Le logement en question ne pourra pas être sous-loué ou cédé à un tiers, le présent contrat s'applique uniquement entre les parties précédemment concernées.
+        </p>
+        <p style="margin-top: 8px;">
+          Toute occupation par une personne non déclarée et excédant la durée tolérée pour les visiteurs pourra être considérée comme une sous-location déguisée.
+        </p>
+      </div>
+
+      <div class="card">
+        <p class="label">B. Autres conditions particulières</p>
+        <ul>
+          <li>Le locataire est tenu de respecter les règles du bon-vivre ensemble, de respect mutuel avec les locataires résidant dans les logements voisins, que ce soit dans l'usage des parties privées (nuisances sonores, olfactives), ou communes.</li>
+          <li>Il est strictement interdit de fumer à l'intérieur du logement et des parties communes intérieures.</li>
+          <li>Le locataire est tenu de ne pas ramener d'animaux dans le logement.</li>
+          <li>Le locataire est tenu de souscrire et de maintenir pendant toute la durée du bail une assurance couvrant les risques locatifs (incendie, dégâts des eaux, explosion, etc.) et d'en justifier au bailleur chaque année sur demande. À défaut de fourniture de l'attestation d'assurance dans le délai d'un mois à compter de la demande du bailleur, ce dernier pourra souscrire une assurance pour le compte du locataire et en répercuter le coût.</li>
+          <li>Le locataire s'engage à respecter les règles ci-dessus en cas de visite d'une personne tierce au contrat. Le logement vise à la location d'une personne seule. La présence d'un visiteur pour une durée supérieure à 4 jours consécutifs ou plus de 3 fois par mois, sans en avoir informé au préalable le bailleur, pourrait être considéré comme élément déclencheur de la clause résolutoire. Toute cohabitation durable non déclarée est interdite.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <p class="label">C. Règlement intérieur</p>
+        <p>Le locataire s'engage à respecter les règles du règlement intérieur ci-joint.</p>
+        <p style="margin-top: 8px;">Le règlement intérieur a la même valeur contractuelle que le présent bail. En cas de contradiction, le bail prévaut.</p>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">XI. RÉVISION ET INDEXATION DU LOYER</h2>
+      <div class="card">
+        <p>Conformément aux dispositions de l'article 17-1 de la loi n° 89-462 du 6 juillet 1989 tendant à améliorer les rapports locatifs, le loyer pourra être révisé chaque année à la date anniversaire du présent bail.</p>
+        <p style="margin-top: 12px;">La révision annuelle du loyer est effectuée en fonction de la variation de l'Indice de Référence des Loyers (IRL) publié par l'Institut National de la Statistique et des Études Économiques (INSEE).</p>
+        <p style="margin-top: 12px;">L'indice de référence pris en compte est celui du trimestre : <strong>[À COMPLÉTER : 1er / 2e / 3e / 4e trimestre de l'année de signature]</strong> publié par l'INSEE.</p>
+        <p style="margin-top: 12px;">La formule de révision est la suivante :</p>
+        <p style="margin: 12px 0; padding: 12px; background: #F0FDF4; border-radius: 6px; text-align: center; font-weight: 600;">
+          Nouveau loyer = Loyer actuel × (Nouvel IRL / IRL de référence)
+        </p>
+        <p class="small" style="margin-top: 12px;">La révision ne porte que sur le loyer hors charges.</p>
+        <p class="small" style="margin-top: 8px;">Le loyer ainsi révisé prend effet à compter de la date anniversaire du bail, sans effet rétroactif. En cas d'omission de la révision par le bailleur, celle-ci ne pourra être réclamée que pour l'année précédant la demande, conformément à la loi.</p>
+        <p class="small" style="margin-top: 8px;"><a href="https://www.service-public.fr/particuliers/vosdroits/F13723" target="_blank">https://www.service-public.fr/particuliers/vosdroits/F13723</a></p>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">XII. ANNEXES</h2>
+      <div class="card">
+        <p><strong>Sont annexées et jointes au contrat de location les pièces suivantes :</strong></p>
+        <ul>
+          <li>A. Un état des lieux, un inventaire et un état détaillé du mobilier</li>
+          <li>B. Un règlement intérieur.</li>
+          <li>C. La notice d'information relative aux droits et obligations des locataires et des bailleurs prévue par l'article 3 de la loi du 6 juillet 1989.</li>
+          <li>D. Le cas échéant, le diagnostic de performance énergétique (DPE), le constat de risque d'exposition au plomb (CREP), l'état des risques (ERNMT/ERP) et, si applicable, le diagnostic électricité/gaz.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="spacer"></div>
+    <p style="text-align: center; margin: 20px 0;"><strong>Le ${aujourdhui}, à REDON</strong></p>
+
+    <div class="signatures">
+      <div class="signature-box">
+        <div class="signature-label">Signature du bailleur</div>
+        <div style="height: 60px;"></div>
+        <div class="signature-line">SARL ALCAYAMA</div>
+      </div>
+      <div class="signature-box">
+        <div class="signature-label">Signature du locataire</div>
+        <div style="height: 60px;"></div>
+        <div class="signature-line">${contrat.prenom_locataire || ''} ${contrat.nom_locataire || ''}</div>
+      </div>
+    </div>
+
   </div>
 
-  <p>Il a été convenu ce qui suit :</p>
-
-  <h2>II. OBJET DU CONTRAT</h2>
-
-  <p>Le présent contrat a pour objet la location d'un logement ainsi déterminé :</p>
-
-  <div class="block">
-    <p class="label">A. Consistance du logement</p>
-    <ul>
-      <li>localisation du logement : 11 rue Marcel Deplantay, ${contrat.numero_chambre || 'Non renseigné'}</li>
-      <li>type d'habitat : Immeuble collectif</li>
-      <li>régime juridique de l'immeuble : Mono-propriété</li>
-      <li>période de construction : avant 1949</li>
-      <li>surface habitable : 180 m2</li>
-      <li>nombre de pièces principales : 1</li>
-      <li>le cas échéant, autres parties du logement : une cuisine partagée, salon, WC, salle de bain, jardin</li>
-      <li>le cas échéant, Éléments d'équipements du logement : salon équipé, cuisine équipée, salle de bain équipée, jardin équipé</li>
-      <li>modalité de production chauffage : électrique collectif</li>
-      <li>modalité de production d'eau chaude sanitaire : électrique collectif</li>
-    </ul>
-  </div>
-
-  <div class="block">
-    <p class="label">B. Destination des locaux :</p>
-    <p>Usage d'habitation.</p>
-  </div>
-
+  <!-- ANNEXE 2 : RÈGLEMENT INTÉRIEUR -->
   <div class="page-break"></div>
 
-  <h2>III. DATE DE PRISE D'EFFET ET DURÉE DU CONTRAT</h2>
-
-  <p>La durée du contrat et sa date de prise d'effet sont ainsi définies :</p>
-  <ul>
-    <li>A. Date de prise d'effet du contrat : ${dateDebut}</li>
-    <li>B. Date de fin d'effet du contrat : ${dateFin}</li>
-    <li>C. Durée du contrat : ${duree}</li>
-  </ul>
-
-  <p>Le locataire peut mettre fin au bail à tout moment, après avoir donné un préavis d'un mois.</p>
-
-  <h2>IV. CONDITIONS FINANCIÈRES</h2>
-
-  <div class="block">
-    <p class="label">Les parties conviennent des conditions financières suivantes :</p>
-
-    <p class="label">A. Loyer</p>
-    <p><em>Fixation du loyer initial :</em></p>
-    <p>Montant du loyer mensuel : ${contrat.loyer ? contrat.loyer + ' €' : 'Non défini'} toutes charges incluses.</p>
-
-    <p class="label spacer-lg">B. Modalités de paiement</p>
-    <ul>
-      <li>méthode de paiement : transfert bancaire</li>
-      <li>date de paiement : le locataire s'engage à réaliser des transferts du montant du loyer avant le 5 de chaque mois</li>
-      <li>les charges incluent comprennent l'électricité, l'eau ainsi que l'ensemble des charges de propriété.<br>
-          Les charges comprises au contrat n'incluent pas la consommation liée au chargement de véhicules électriques (voiture, trottinette, vélo, etc.),
-          laquelle pourra faire l'objet d'une facturation supplémentaire.</li>
-    </ul>
+  <div class="header">
+    <h1>ANNEXE 2</h1>
+    <div class="subtitle">Règlement intérieur de la colocation</div>
   </div>
 
-  <h2>V. TRAVAUX</h2>
-  <p>Le locataire s'engage à ne pas réaliser de travaux de tout ordre dans le logement sans l'accord préalable du bailleur.</p>
-
-  <h2>VI. GARANTIES</h2>
-  <p>
-    Le locataire dépose un chèque de caution ou effectue un virement bancaire d'une valeur égale à un mois de loyer
-    ( ${contrat.depot_garantie ? contrat.depot_garantie + ' €' : contrat.loyer + ' €'} ), qui sera encaissé puis rendu par le bailleur au terme du présent contrat.
-  </p>
-  <p>En cas de dégradation de l'immeuble, ou de meubles composant le logement, la valeur des dommages sera soustraite au montant rendu.</p>
-
-  <h2>VII. CLAUSE RÉSOLUTOIRE</h2>
-  <p>
-    Il est expressément convenu qu'à défaut de paiement du dépôt de garantie, d'un seul terme de loyer ou des charges à leur échéance et deux mois après un
-    commandement de payer demeuré infructueux, le bail sera résilié de plein droit si bon semble au bailleur.
-  </p>
-
-  <h2>X. AUTRES CONDITIONS PARTICULIÈRES</h2>
-
-  <p class="label">A. Condition(s) relative(s) à la sous-location</p>
-  <p>
-    Le logement en question ne pourra pas être sous-loué ou cédé à un tiers, le présent contrat s'applique uniquement entre les parties précédemment concernées.
-  </p>
-
-  <p class="label spacer-lg">B. Autres conditions particulières</p>
-  <p>
-    Le locataire est tenu de respecter les règles du bon-vivre ensemble, de respect mutuel avec les locataires résidant dans les logements voisins,
-    que ce soit dans l'usage des parties privées (nuisances sonores), ou communes.
-  </p>
-  <p>Il est strictement interdit de fumer à l'intérieur du logement et des parties communes intérieures.</p>
-  <p>Le locataire est tenu de ne pas ramener d'animaux dans le logement.</p>
-  <p>
-    Le locataire est tenu de souscrire et de maintenir pendant toute la durée du bail une assurance couvrant les risques locatifs
-    (incendie, dégâts des eaux, explosion, etc.) et d'en justifier au bailleur chaque année sur demande.
-  </p>
-  <p>
-    Le locataire s'engage à respecter les règles ci-dessus en cas de visite d'une personne tierce au contrat.
-    Le logement vise à la location d'une personne seule. La présence d'un visiteur pour une durée supérieure à 4 jours, sans en avoir informé au préalable le bailleur,
-    pourrait être considérée comme élément déclencheur de la clause résolutoire.
-  </p>
-
-  <h2>XI. ANNEXES</h2>
-  <p><strong>Sont annexées et jointes au contrat de location les pièces suivantes :</strong></p>
-  <ul>
-    <li>Un état des lieux, un inventaire et un état détaillé du mobilier</li>
-  </ul>
-
-  <div class="spacer-lg"></div>
-
-  <p>Le ${aujourdhui}, à REDON</p>
-
-  <div class="grid-2" style="gap:40px; margin-top:18pt;">
-    <div>
-      <div class="label">Signature du bailleur</div>
-      <div class="signature-box"></div>
+  <div class="content">
+    <div class="card" style="margin-bottom: 20px;">
+      <p style="font-style: italic;">Ce règlement intérieur complète le bail de location et s'applique à l'ensemble des colocataires occupant le logement. Chaque colocataire s'engage à le respecter dans un esprit de courtoisie, de propreté et de respect mutuel.</p>
     </div>
-    <div>
-      <div class="label">Signature du locataire</div>
-      <div class="signature-box"></div>
+
+    <div class="section">
+      <h2 class="section-title">Vie collective et respect mutuel</h2>
+      <div class="card">
+        <p>Les colocataires s'engagent à entretenir des relations courtoises et à respecter la tranquillité de chacun.</p>
+        <p style="margin-top: 8px;">Toute attitude agressive, discriminatoire, ou perturbant la vie du groupe est strictement interdite.</p>
+      </div>
     </div>
+
+    <div class="section">
+      <h2 class="section-title">Propreté et entretien</h2>
+      <div class="card">
+        <ul>
+          <li>Les parties communes (cuisine, salon, sanitaires, couloirs, etc.) doivent être maintenues propres en permanence.</li>
+          <li>Les ordures ménagères doivent être triées et sorties régulièrement selon le calendrier de la mairie de Redon.</li>
+          <li>Les parties privatives (chambres) doivent rester en bon état et propres afin d'éviter toute dégradation.</li>
+          <li class="small">Un défaut d'entretien répété des parties communes pourra être imputé au(x) colocataire(s) désigné(s) et faire l'objet d'une retenue sur le dépôt de garantie en cas de remise en état.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">Bruit et nuisances</h2>
+      <div class="card">
+        <ul>
+          <li>Le calme du logement doit être respecté, en particulier entre 22h00 et 8h00.</li>
+          <li>Les fêtes ou rassemblements exceptionnels doivent être prévenus à l'avance aux autres colocataires et rester raisonnables.</li>
+          <li>L'usage d'appareils sonores (enceintes, télévision, instruments de musique…) doit rester à un niveau modéré.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">Cigarettes, drogues et substances</h2>
+      <div class="card">
+        <ul>
+          <li>Il est strictement interdit de fumer dans toutes les pièces du logement, y compris les chambres, la cuisine, la salle de bain et les couloirs.</li>
+          <li>Le tabac n'est autorisé qu'à l'extérieur du logement, en veillant à ne pas gêner le voisinage.</li>
+          <li>La consommation, détention ou vente de drogues ou substances illicites est strictement prohibée.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">Animaux</h2>
+      <div class="card">
+        <p>Aucun animal, même temporairement, n'est autorisé dans le logement ni dans ses dépendances (balcon, cave, jardin, etc.).</p>
+        <p style="margin-top: 8px;">Toute dérogation éventuelle devra être validée par écrit par le bailleur et l'ensemble des colocataires.</p>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">Sécurité et matériel</h2>
+      <div class="card">
+        <ul>
+          <li>Chaque colocataire doit veiller à fermer portes et fenêtres en quittant le logement.</li>
+          <li>Aucun appareil électrique défectueux ne doit être utilisé.</li>
+          <li>Les détecteurs de fumée et extincteurs doivent être maintenus en bon état.</li>
+          <li>En cas d'incident (fuite d'eau, panne, casse), le colocataire concerné doit prévenir immédiatement le bailleur ou la personne responsable.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">Utilisation des équipements et des parties communes</h2>
+      <div class="card">
+        <ul>
+          <li>Les équipements (électroménager, mobilier, vaisselle, Wi-Fi, etc.) sont à usage collectif et doivent être utilisés avec soin.</li>
+          <li>Aucun meuble ne peut être déplacé des parties communes vers les chambres sans accord collectif.</li>
+          <li>Les chambres sont personnelles et ne peuvent être utilisées comme lieu de stockage commun ou de passage.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">Visites et hébergements extérieurs</h2>
+      <div class="card">
+        <ul>
+          <li>Les colocataires peuvent recevoir des invités dans la limite du raisonnable et sous réserve du respect du calme et de la propreté.</li>
+          <li>L'hébergement d'une personne extérieure ne doit pas excéder 3 nuits consécutives par mois, sauf accord de tous les colocataires et du bailleur.</li>
+          <li>Les visiteurs sont sous la responsabilité du colocataire qui les invite.</li>
+          <li>En cas d'hébergement régulier non déclaré, le bailleur pourra requalifier la situation et appliquer la clause résolutoire.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">Dégradations et réparations</h2>
+      <div class="card">
+        <ul>
+          <li>Toute dégradation volontaire ou par négligence engage la responsabilité du colocataire concerné.</li>
+          <li>Les réparations locatives sont à la charge des colocataires selon la répartition prévue par la loi.</li>
+          <li>Les dégâts constatés dans les parties communes devront être signalés immédiatement.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">Respect du bail et du voisinage</h2>
+      <div class="card">
+        <p>Les colocataires s'engagent à respecter les règles du bail de location, du présent règlement, et du règlement de copropriété le cas échéant.</p>
+        <p style="margin-top: 8px;">Le bon voisinage est essentiel : les nuisances sonores, odeurs ou comportements gênants sont à proscrire.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footer">
+    <strong>SARL ALCAYAMA</strong>
+    38 rue du moulin bâtard, 44490 Le Croisic<br>
+    RCS : 892 739 764 | Email : alcamaya.contact@gmail.com
   </div>
 
 </body>
@@ -431,6 +830,14 @@ export async function genererContratPDF(req, res) {
         // Générer le HTML
         const html = genererHTMLContrat(contrat, bailleur, contrat.bien);
 
+        console.log('🎨 [NOUVEAU DESIGN] Génération du PDF avec Puppeteer...');
+        console.log('📝 Extrait HTML (premiers 500 caractères):', html.substring(0, 500));
+
+        // DEBUG: Sauvegarder le HTML pour vérification
+        const fs = await import('fs');
+        await fs.promises.writeFile('/tmp/contrat-debug.html', html);
+        console.log('💾 HTML sauvegardé dans /tmp/contrat-debug.html');
+
         // Lancer puppeteer
         browser = await puppeteer.launch({
             headless: 'new',
@@ -445,10 +852,10 @@ export async function genererContratPDF(req, res) {
             format: 'A4',
             printBackground: true,
             margin: {
-                top: '18mm',
-                right: '18mm',
-                bottom: '20mm',
-                left: '18mm'
+                top: '0mm',
+                right: '0mm',
+                bottom: '0mm',
+                left: '0mm'
             }
         });
 

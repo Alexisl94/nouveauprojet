@@ -846,11 +846,10 @@ function showContratsPage() {
 
         <!-- Modal d'invitation -->
         <div id="invitation-modal-contrats" class="modal hidden">
-            <div class="modal-overlay" onclick="closeInvitationModalContrats()"></div>
-            <div class="modal-dialog" style="max-width: 500px;">
+            <div class="modal-content" style="max-width: 500px;">
                 <div class="modal-header">
                     <h3>Inviter le locataire</h3>
-                    <button class="close-btn" onclick="closeInvitationModalContrats()">×</button>
+                    <button class="close-modal" onclick="closeInvitationModalContrats()">×</button>
                 </div>
                 <div class="modal-body">
                     <p style="color: var(--text-secondary); margin-bottom: 20px;">
@@ -871,7 +870,7 @@ function showContratsPage() {
 
                     <div id="invitation-result" class="hidden"></div>
                 </div>
-                <div class="modal-footer">
+                <div class="modal-actions">
                     <button class="btn-secondary" onclick="closeInvitationModalContrats()">Annuler</button>
                     <button class="btn-primary" id="send-invitation-btn-contrats" onclick="sendInvitationContrats()">
                         <i class="fas fa-paper-plane"></i> Envoyer l'invitation

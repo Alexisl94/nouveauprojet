@@ -306,74 +306,295 @@ export async function genererQuittancePDF(req, res) {
             return res.status(404).json({ error: 'Quittance non trouvée' });
         }
 
-        const mois = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 
+        const mois = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
                       'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'][quittance.mois - 1];
-        
+        const aujourdhui = new Date().toLocaleDateString('fr-FR');
+
         const html = `
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
     <meta charset="utf-8">
     <title>Quittance de loyer</title>
     <style>
-        body { font-family: Arial, sans-serif; padding: 40px; }
-        h1 { text-align: center; color: #333; }
-        .header { margin-bottom: 30px; }
-        .info { margin: 20px 0; }
-        .info-row { margin: 10px 0; }
-        .label { font-weight: bold; }
-        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-        th { background-color: #f5f5f5; }
-        .total { font-weight: bold; font-size: 1.2em; }
+        @page {
+            size: A4;
+            margin: 20mm 0 25mm 0;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            font-size: 10pt;
+            line-height: 1.5;
+            color: #0F172A;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+            position: relative;
+            min-height: 100vh;
+        }
+
+        /* ——— Header ——— */
+        .header {
+            background: linear-gradient(135deg, #3E8914 0%, #2d7a45 100%);
+            color: white;
+            padding: 30px 40px;
+            text-align: center;
+            page-break-after: avoid;
+            margin-top: -20mm;
+            margin-left: -0mm;
+            margin-right: -0mm;
+        }
+
+        .header h1 {
+            font-size: 24pt;
+            font-weight: 700;
+            margin: 0 0 8px 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .header .subtitle {
+            font-size: 11pt;
+            opacity: 0.95;
+            font-weight: 400;
+        }
+
+        /* ——— Content ——— */
+        .content {
+            padding: 30px 40px 100px 40px;
+            background: #F8FAFB;
+            min-height: calc(100vh - 200px);
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+            page-break-inside: avoid;
+        }
+
+        .info-block {
+            background: #F0FDF4;
+            padding: 16px;
+            border-radius: 6px;
+            border-left: 3px solid #3E8914;
+        }
+
+        .info-label {
+            font-size: 9pt;
+            color: #64748B;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+            font-weight: 600;
+        }
+
+        .info-value {
+            font-size: 11pt;
+            color: #0F172A;
+            font-weight: 600;
+        }
+
+        /* ——— Montants ——— */
+        .montants-card {
+            background: white;
+            padding: 24px;
+            border-radius: 8px;
+            margin: 30px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            border: 1px solid #E2E8F0;
+            page-break-inside: avoid;
+        }
+
+        .montants-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .montants-table td {
+            padding: 12px 0;
+            font-size: 11pt;
+        }
+
+        .montants-table tr {
+            border-bottom: 1px solid #E2E8F0;
+        }
+
+        .montants-table tr:last-child {
+            border-bottom: none;
+            border-top: 2px solid #3E8914;
+            font-weight: 700;
+            font-size: 14pt;
+            color: #3E8914;
+        }
+
+        .montants-table td:last-child {
+            text-align: right;
+            font-weight: 600;
+        }
+
+        /* ——— Sections ——— */
+        .section-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            border: 1px solid #E2E8F0;
+            page-break-inside: avoid;
+        }
+
+        .section-title {
+            font-size: 12pt;
+            font-weight: 700;
+            color: #3E8914;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #3E8914;
+        }
+
+        /* ——— Signatures ——— */
+        .signatures {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin: 30px 0;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            page-break-inside: avoid;
+        }
+
+        .signature-box {
+            text-align: center;
+        }
+
+        .signature-label {
+            font-weight: 700;
+            margin-bottom: 40px;
+            color: #1E293B;
+        }
+
+        .signature-line {
+            border-top: 2px solid #0F172A;
+            padding-top: 8px;
+            font-size: 9pt;
+            color: #64748B;
+        }
+
+        /* ——— Footer ——— */
+        .footer {
+            background: #0F172A;
+            color: white;
+            padding: 20px 40px;
+            text-align: center;
+            font-size: 9pt;
+            line-height: 1.6;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            width: 100%;
+        }
+
+        .footer strong {
+            font-size: 10pt;
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .note {
+            background: #F0FDF4;
+            padding: 16px;
+            border-radius: 6px;
+            border-left: 3px solid #3E8914;
+            margin: 20px 0;
+            font-size: 9pt;
+            color: #475569;
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
-    <h1>QUITTANCE DE LOYER</h1>
-    
+
     <div class="header">
-        <div class="info-row">
-            <span class="label">Période:</span> ${mois} ${quittance.annee}
+        <h1>Quittance de Loyer</h1>
+        <div class="subtitle">${mois} ${quittance.annee}</div>
+    </div>
+
+    <div class="content">
+        <div class="info-grid">
+            <div class="info-block">
+                <div class="info-label">Locataire</div>
+                <div class="info-value">${quittance.contrats.prenom_locataire} ${quittance.contrats.nom_locataire}</div>
+            </div>
+            <div class="info-block">
+                <div class="info-label">Bien loué</div>
+                <div class="info-value">${quittance.contrats.biens.nom}</div>
+                ${quittance.contrats.biens.adresse ? `<p style="margin-top: 8px; font-size: 9pt; color: #475569;">${quittance.contrats.biens.adresse}</p>` : ''}
+            </div>
         </div>
-        <div class="info-row">
-            <span class="label">Locataire:</span> ${quittance.contrats.nom_locataire} ${quittance.contrats.prenom_locataire}
+
+        ${quittance.date_paiement ? `
+        <div class="info-block" style="margin-bottom: 20px;">
+            <div class="info-label">Date de paiement</div>
+            <div class="info-value">${new Date(quittance.date_paiement).toLocaleDateString('fr-FR')}</div>
+            ${quittance.mode_paiement ? `<p style="margin-top: 8px; font-size: 9pt; color: #475569;">Mode : ${quittance.mode_paiement}</p>` : ''}
         </div>
-        <div class="info-row">
-            <span class="label">Bien:</span> ${quittance.contrats.biens.nom} - ${quittance.contrats.biens.adresse}
+        ` : ''}
+
+        <div class="montants-card">
+            <table class="montants-table">
+                <tr>
+                    <td>Loyer</td>
+                    <td>${quittance.montant_loyer.toFixed(2)} €</td>
+                </tr>
+                <tr>
+                    <td>Charges</td>
+                    <td>${(quittance.montant_charges || 0).toFixed(2)} €</td>
+                </tr>
+                <tr>
+                    <td>TOTAL</td>
+                    <td>${quittance.montant_total.toFixed(2)} €</td>
+                </tr>
+            </table>
         </div>
-        <div class="info-row">
-            <span class="label">Date de paiement:</span> ${quittance.date_paiement ? new Date(quittance.date_paiement).toLocaleDateString('fr-FR') : 'Non payé'}
+
+        ${quittance.observations ? `
+        <div class="note">
+            <strong>Observations :</strong><br>
+            ${quittance.observations}
+        </div>
+        ` : ''}
+
+        <div class="note">
+            Le présent document certifie que le locataire a réglé la totalité du loyer et des charges pour la période indiquée ci-dessus.
+        </div>
+
+        <p style="text-align: center; margin: 20px 0;"><strong>Fait le ${aujourdhui}, à Redon</strong></p>
+
+        <div class="signatures">
+            <div class="signature-box">
+                <div class="signature-label">Signature du bailleur</div>
+                <div style="height: 60px;"></div>
+                <div class="signature-line">SARL ALCAYAMA</div>
+            </div>
+            <div class="signature-box">
+                <div class="signature-label">Signature du locataire</div>
+                <div style="height: 60px;"></div>
+                <div class="signature-line">${quittance.contrats.prenom_locataire} ${quittance.contrats.nom_locataire}</div>
+            </div>
         </div>
     </div>
 
-    <table>
-        <thead>
-            <tr>
-                <th>Désignation</th>
-                <th>Montant</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td>Loyer</td>
-                <td>${quittance.montant_loyer.toFixed(2)} €</td>
-            </tr>
-            <tr>
-                <td>Charges</td>
-                <td>${(quittance.montant_charges || 0).toFixed(2)} €</td>
-            </tr>
-            <tr class="total">
-                <td>TOTAL</td>
-                <td>${quittance.montant_total.toFixed(2)} €</td>
-            </tr>
-        </tbody>
-    </table>
-
-    ${quittance.observations ? `<div class="info"><span class="label">Observations:</span> ${quittance.observations}</div>` : ''}
-    
-    <div style="margin-top: 50px; font-size: 0.9em; color: #666;">
-        <p>Quittance générée le ${new Date().toLocaleDateString('fr-FR')}</p>
+    <div class="footer">
+        <strong>SARL ALCAYAMA</strong>
+        38 rue du moulin bâtard, 44490 Le Croisic<br>
+        RCS : 892 739 764 | Email : alcamaya.contact@gmail.com
     </div>
+
 </body>
 </html>
         `;
