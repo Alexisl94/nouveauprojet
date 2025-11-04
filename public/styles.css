@@ -943,11 +943,15 @@ body::before {
     box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1);
 }
 
+/* Modal footer et actions - styles uniformisés */
+.modal-footer,
 .modal-actions {
     display: flex;
-    gap: 8px;
+    gap: 12px;
     justify-content: flex-end;
-    margin-top: 20px;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
 }
 
 /* Détails du bien */
@@ -1985,11 +1989,11 @@ table.etat-table {
 }
 
 .document-card.etat-sortie .document-icon {
-    color: var(--success);
+    color: var(--warning);
 }
 
 .document-card.contrat .document-icon {
-    color: var(--warning);
+    color: #3b82f6; /* Bleu pour les contrats */
 }
 
 .document-title {
@@ -3358,13 +3362,4 @@ body:has(.sidebar:not(.hidden)) #template-edit-section {
     background: var(--danger);
     color: white;
     transform: scale(1.1);
-}
-
-.modal-actions {
-    display: flex;
-    gap: 12px;
-    justify-content: flex-end;
-    margin-top: 24px;
-    padding-top: 20px;
-    border-top: 1px solid var(--border-color);
 }

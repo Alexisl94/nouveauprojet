@@ -637,7 +637,9 @@ async function displayDocuments() {
             card.className = `document-card etat-${etat.type}`;
             card.onclick = () => openEtatDetail(etat.id);
 
-            const typeIcon = etat.type === 'entree' ? '📥' : '📤';
+            const typeIcon = etat.type === 'entree'
+                ? '<i class="fas fa-right-to-bracket"></i>'
+                : '<i class="fas fa-right-from-bracket"></i>';
             const typeLabel = etat.type === 'entree' ? 'État entrée' : 'État sortie';
             const date = new Date(etat.dateCreation).toLocaleDateString('fr-FR');
 
@@ -667,7 +669,7 @@ async function displayDocuments() {
             const date = contrat.date_debut ? new Date(contrat.date_debut).toLocaleDateString('fr-FR') : '';
 
             card.innerHTML = `
-                <div class="document-icon">📄</div>
+                <div class="document-icon"><i class="fas fa-file-contract"></i></div>
                 <div class="document-title">Contrat</div>
                 <div class="document-subtitle">${contrat.prenom_locataire} ${contrat.nom_locataire}</div>
                 <div class="document-date">${date}</div>

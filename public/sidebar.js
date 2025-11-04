@@ -849,7 +849,7 @@ function showContratsPage() {
             <div class="modal-content" style="max-width: 500px;">
                 <div class="modal-header">
                     <h3>Inviter le locataire</h3>
-                    <button class="close-modal" onclick="closeInvitationModalContrats()">×</button>
+                    <button class="modal-close" onclick="closeInvitationModalContrats()">×</button>
                 </div>
                 <div class="modal-body">
                     <p style="color: var(--text-secondary); margin-bottom: 20px;">
@@ -1140,7 +1140,7 @@ function generateInvitationBadge(contrat, status) {
     }
 
     if (status && status.locataire_connected) {
-        return '<span class="status-badge badge-success">✓ Accès actif</span>';
+        return '<span class="status-badge badge-success"><i class="fas fa-check"></i> Accès actif</span>';
     }
 
     if (status && status.invitation_sent && !status.invitation_expired) {
@@ -1163,7 +1163,7 @@ function generateInvitationActions(contrat, status) {
     }
 
     if (status && status.locataire_connected) {
-        return `<p class="success-text">✓ Le locataire peut se connecter à son espace</p>`;
+        return `<p class="success-text"><i class="fas fa-check"></i> Le locataire peut se connecter à son espace</p>`;
     }
 
     if (status && status.invitation_sent && !status.invitation_expired && status.invitation_link) {

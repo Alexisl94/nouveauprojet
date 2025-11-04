@@ -213,7 +213,6 @@ function genererHTMLContrat(contrat, proprietaire, bien) {
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
       position: relative;
-      min-height: 100vh;
     }
 
     /* ——— Header ——— */
@@ -227,6 +226,11 @@ function genererHTMLContrat(contrat, proprietaire, bien) {
       margin-top: -20mm;
       margin-left: -0mm;
       margin-right: -0mm;
+    }
+
+    .header.header-annexe {
+      margin-top: 0;
+      page-break-before: always;
     }
 
     .header h1 {
@@ -245,9 +249,8 @@ function genererHTMLContrat(contrat, proprietaire, bien) {
 
     /* ——— Content ——— */
     .content {
-      padding: 30px 40px 100px 40px;
+      padding: 30px 40px;
       background: #F8FAFB;
-      min-height: calc(100vh - 200px);
     }
 
     /* Sections principales */
@@ -348,10 +351,7 @@ function genererHTMLContrat(contrat, proprietaire, bien) {
       text-align: center;
       font-size: 9pt;
       line-height: 1.6;
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
+      margin-top: 60px;
       width: 100%;
     }
 
@@ -362,6 +362,11 @@ function genererHTMLContrat(contrat, proprietaire, bien) {
     }
 
     /* ——— Signatures ——— */
+    .signature-section {
+      page-break-inside: avoid;
+      margin-top: 40px;
+    }
+
     .signatures {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -370,6 +375,7 @@ function genererHTMLContrat(contrat, proprietaire, bien) {
       padding: 20px;
       background: white;
       border-radius: 8px;
+      page-break-inside: avoid;
     }
 
     .signature-box {
@@ -391,6 +397,42 @@ function genererHTMLContrat(contrat, proprietaire, bien) {
 
     .page-break { page-break-after: always; }
     .spacer { margin-top: 16px; }
+
+
+    /* ——— Style spécifique pour le règlement intérieur ——— */
+    .reglement-section {
+      page-break-inside: avoid;
+      margin-bottom: 24px;
+      background: white;
+      padding: 20px;
+      border-radius: 6px;
+      border-left: 4px solid #64748B;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+
+    .reglement-title {
+      font-size: 12pt;
+      font-weight: 700;
+      color: #1E293B;
+      margin: 0 0 12px 0;
+      padding-bottom: 6px;
+      border-bottom: 2px solid #E2E8F0;
+      page-break-after: avoid;
+    }
+
+    .reglement-content {
+      background: white;
+      padding: 0;
+    }
+
+    .reglement-content p, .reglement-content ul {
+      font-size: 9.5pt;
+      color: #475569;
+    }
+
+    .reglement-content ul {
+      margin-left: 16px;
+    }
   </style>
 </head>
 <body>
@@ -430,28 +472,19 @@ function genererHTMLContrat(contrat, proprietaire, bien) {
 
       <p><strong>Le présent contrat est conclu entre les soussignés :</strong></p>
 
-      <div class="info-grid">
-        <div class="info-block">
-          <div class="info-label">Le Bailleur</div>
-          <div class="info-value">SARL ALCAYAMA</div>
-          <p style="margin-top: 8px; font-size: 9pt; color: #475569;">
-            38 rue du moulin bâtard<br>
-            44490 Le Croisic<br>
-            RCS : 892 739 764<br>
-            Mail : alcamaya.contact@gmail.com
-          </p>
-          <p style="margin-top: 8px; font-size: 9pt;">désigné(s) ci-après « <strong>le bailleur</strong> ».</p>
-        </div>
+      <p style="margin-top: 16px;"><strong>Le Bailleur :</strong> SARL ALCAYAMA</p>
+      <p style="margin-left: 20px; font-size: 9.5pt; color: #475569;">
+        38 rue du moulin bâtard, 44490 Le Croisic<br>
+        RCS : 892 739 764<br>
+        Mail : alcamaya.contact@gmail.com
+      </p>
+      <p style="margin-top: 8px; margin-left: 20px; font-size: 9.5pt;">désigné ci-après « <strong>le bailleur</strong> ».</p>
 
-        <div class="info-block">
-          <div class="info-label">Le Locataire</div>
-          <div class="info-value">${contrat.prenom_locataire || 'Non renseigné'} ${contrat.nom_locataire || 'Non renseigné'}</div>
-          <p style="margin-top: 8px; font-size: 9pt; color: #475569;">
-            ${contrat.email_locataire ? 'Mail : ' + contrat.email_locataire : 'Email non renseigné'}
-          </p>
-          <p style="margin-top: 8px; font-size: 9pt;">désigné(s) ci-après « <strong>le locataire</strong> ».</p>
-        </div>
-      </div>
+      <p style="margin-top: 16px;"><strong>Le Locataire :</strong> ${contrat.prenom_locataire || 'Non renseigné'} ${contrat.nom_locataire || 'Non renseigné'}</p>
+      <p style="margin-left: 20px; font-size: 9.5pt; color: #475569;">
+        ${contrat.email_locataire ? 'Mail : ' + contrat.email_locataire : 'Email non renseigné'}
+      </p>
+      <p style="margin-top: 8px; margin-left: 20px; font-size: 9.5pt;">désigné ci-après « <strong>le locataire</strong> ».</p>
 
       <p style="margin-top: 16px;">Le locataire déclare louer le logement à titre de <strong>résidence principale</strong> au sens de l'article 2 de la loi du 6 juillet 1989.</p>
       <p style="margin-top: 12px;"><strong>Il a été convenu ce qui suit :</strong></p>
@@ -498,26 +531,14 @@ function genererHTMLContrat(contrat, proprietaire, bien) {
     <div class="section">
       <h2 class="section-title">III. DATE DE PRISE D'EFFET ET DURÉE DU CONTRAT</h2>
 
-      <p>La durée du contrat et sa date de prise d'effet sont ainsi définies :</p>
+      <p><strong>A. Date de prise d'effet du contrat :</strong> ${dateDebut}</p>
+      <p style="margin-top: 8px;"><strong>B. Date de fin d'effet du contrat :</strong> ${dateFin}</p>
+      <p style="margin-top: 8px;"><strong>C. Durée du contrat :</strong> ${duree}</p>
 
-      <div class="info-grid">
-        <div class="info-block">
-          <div class="info-label">A. Date de prise d'effet du contrat</div>
-          <div class="info-value">${dateDebut}</div>
-        </div>
-        <div class="info-block">
-          <div class="info-label">B. Date de fin d'effet du contrat</div>
-          <div class="info-value">${dateFin}</div>
-        </div>
-      </div>
+      <p style="margin-top: 12px; font-size: 9pt; color: #64748B;">(bail meublé d'une durée minimale légale de 1 an renouvelable tacitement, sauf mention contraire ci-dessus ou cas d'un locataire étudiant – 9 mois non reconductible).</p>
 
-      <div class="card">
-        <p class="label">C. Durée du contrat : ${duree}</p>
-        <p style="margin-top: 8px; font-size: 9pt; color: #64748B;">(bail meublé d'une durée minimale légale de 1 an renouvelable tacitement, sauf mention contraire ci-dessus ou cas d'un locataire étudiant – 9 mois non reconductible).</p>
-        <div class="spacer"></div>
-        <p>À défaut de congé donné dans les formes et délais légaux par l'une ou l'autre des parties, le bail est reconduit tacitement dans les conditions prévues par la loi.</p>
-        <p style="margin-top: 8px;"><strong>Le locataire peut mettre fin au bail à tout moment, après avoir donné un préavis d'un mois.</strong></p>
-      </div>
+      <p style="margin-top: 12px;">À défaut de congé donné dans les formes et délais légaux par l'une ou l'autre des parties, le bail est reconduit tacitement dans les conditions prévues par la loi.</p>
+      <p style="margin-top: 8px;"><strong>Le locataire peut mettre fin au bail à tout moment, après avoir donné un préavis d'un mois.</strong></p>
     </div>
 
     <div class="section">
@@ -527,13 +548,8 @@ function genererHTMLContrat(contrat, proprietaire, bien) {
 
       <div class="card">
         <p class="label">A. Loyer</p>
-        <p style="margin-top: 8px;"><strong>Fixation du loyer initial :</strong></p>
-        <div class="spacer"></div>
-        <div style="background: #F0FDF4; padding: 16px; border-radius: 6px; border-left: 4px solid #3E8914;">
-          <div style="font-size: 11pt; color: #64748B; margin-bottom: 4px;">Montant du loyer mensuel</div>
-          <div style="font-size: 18pt; font-weight: 700; color: #3E8914;">${contrat.loyer ? contrat.loyer + ' €' : 'Non défini'}</div>
-          <div style="font-size: 9pt; color: #64748B; margin-top: 4px;">Toutes charges incluses</div>
-        </div>
+        <p style="margin-top: 12px;"><strong>Fixation du loyer initial :</strong></p>
+        <p style="margin-top: 8px; font-size: 11pt;">Montant du loyer mensuel : <strong style="font-size: 14pt; color: #1E293B;">${contrat.loyer ? contrat.loyer + ' €' : 'Non défini'}</strong> (toutes charges incluses)</p>
         <p style="margin-top: 12px;">Le loyer comprend les charges récupérables suivantes : électricité, eau, charges de propriété, entretien des parties communes, ainsi que l'accès et l'usage normal des équipements communs.</p>
       </div>
 
@@ -560,11 +576,8 @@ function genererHTMLContrat(contrat, proprietaire, bien) {
     <div class="section">
       <h2 class="section-title">VI. GARANTIES</h2>
       <div class="card">
-        <div style="background: #F0FDF4; padding: 16px; border-radius: 6px; border-left: 4px solid #3E8914; margin-bottom: 12px;">
-          <div style="font-size: 10pt; color: #64748B; margin-bottom: 4px;">Dépôt de garantie</div>
-          <div style="font-size: 16pt; font-weight: 700; color: #3E8914;">${contrat.depot_garantie ? contrat.depot_garantie + ' €' : contrat.loyer + ' €'}</div>
-        </div>
-        <p>
+        <p><strong>Dépôt de garantie :</strong> <strong style="font-size: 14pt; color: #1E293B;">${contrat.depot_garantie ? contrat.depot_garantie + ' €' : contrat.loyer + ' €'}</strong></p>
+        <p style="margin-top: 12px;">
           Le locataire dépose un chèque de caution ou effectue un virement bancaire d'une valeur égale à un mois de loyer (${contrat.loyer ? contrat.loyer + ' €' : 'Non défini'}),
           qui sera encaissé puis rendu par le bailleur au terme du présent contrat.
         </p>
@@ -626,10 +639,7 @@ function genererHTMLContrat(contrat, proprietaire, bien) {
         <p>Conformément aux dispositions de l'article 17-1 de la loi n° 89-462 du 6 juillet 1989 tendant à améliorer les rapports locatifs, le loyer pourra être révisé chaque année à la date anniversaire du présent bail.</p>
         <p style="margin-top: 12px;">La révision annuelle du loyer est effectuée en fonction de la variation de l'Indice de Référence des Loyers (IRL) publié par l'Institut National de la Statistique et des Études Économiques (INSEE).</p>
         <p style="margin-top: 12px;">L'indice de référence pris en compte est celui du trimestre : <strong>[À COMPLÉTER : 1er / 2e / 3e / 4e trimestre de l'année de signature]</strong> publié par l'INSEE.</p>
-        <p style="margin-top: 12px;">La formule de révision est la suivante :</p>
-        <p style="margin: 12px 0; padding: 12px; background: #F0FDF4; border-radius: 6px; text-align: center; font-weight: 600;">
-          Nouveau loyer = Loyer actuel × (Nouvel IRL / IRL de référence)
-        </p>
+        <p style="margin-top: 12px;"><strong>Formule de révision :</strong> Nouveau loyer = Loyer actuel × (Nouvel IRL / IRL de référence)</p>
         <p class="small" style="margin-top: 12px;">La révision ne porte que sur le loyer hors charges.</p>
         <p class="small" style="margin-top: 8px;">Le loyer ainsi révisé prend effet à compter de la date anniversaire du bail, sans effet rétroactif. En cas d'omission de la révision par le bailleur, celle-ci ne pourra être réclamée que pour l'année précédant la demande, conformément à la loi.</p>
         <p class="small" style="margin-top: 8px;"><a href="https://www.service-public.fr/particuliers/vosdroits/F13723" target="_blank">https://www.service-public.fr/particuliers/vosdroits/F13723</a></p>
@@ -649,28 +659,27 @@ function genererHTMLContrat(contrat, proprietaire, bien) {
       </div>
     </div>
 
-    <div class="spacer"></div>
-    <p style="text-align: center; margin: 20px 0;"><strong>Le ${aujourdhui}, à REDON</strong></p>
+    <div class="signature-section">
+      <p style="text-align: center; margin: 20px 0;"><strong>Le ${aujourdhui}, à REDON</strong></p>
 
-    <div class="signatures">
-      <div class="signature-box">
-        <div class="signature-label">Signature du bailleur</div>
-        <div style="height: 60px;"></div>
-        <div class="signature-line">SARL ALCAYAMA</div>
-      </div>
-      <div class="signature-box">
-        <div class="signature-label">Signature du locataire</div>
-        <div style="height: 60px;"></div>
-        <div class="signature-line">${contrat.prenom_locataire || ''} ${contrat.nom_locataire || ''}</div>
+      <div class="signatures">
+        <div class="signature-box">
+          <div class="signature-label">Signature du bailleur</div>
+          <div style="height: 60px;"></div>
+          <div class="signature-line">SARL ALCAYAMA</div>
+        </div>
+        <div class="signature-box">
+          <div class="signature-label">Signature du locataire</div>
+          <div style="height: 60px;"></div>
+          <div class="signature-line">${contrat.prenom_locataire || ''} ${contrat.nom_locataire || ''}</div>
+        </div>
       </div>
     </div>
 
   </div>
 
   <!-- ANNEXE 2 : RÈGLEMENT INTÉRIEUR -->
-  <div class="page-break"></div>
-
-  <div class="header">
+  <div class="header header-annexe">
     <h1>ANNEXE 2</h1>
     <div class="subtitle">Règlement intérieur de la colocation</div>
   </div>
@@ -680,29 +689,28 @@ function genererHTMLContrat(contrat, proprietaire, bien) {
       <p style="font-style: italic;">Ce règlement intérieur complète le bail de location et s'applique à l'ensemble des colocataires occupant le logement. Chaque colocataire s'engage à le respecter dans un esprit de courtoisie, de propreté et de respect mutuel.</p>
     </div>
 
-    <div class="section">
-      <h2 class="section-title">Vie collective et respect mutuel</h2>
-      <div class="card">
-        <p>Les colocataires s'engagent à entretenir des relations courtoises et à respecter la tranquillité de chacun.</p>
-        <p style="margin-top: 8px;">Toute attitude agressive, discriminatoire, ou perturbant la vie du groupe est strictement interdite.</p>
+    <div class="reglement-section">
+      <h3 class="reglement-title">Vie collective et respect mutuel</h3>
+      <div class="reglement-content">
+        <p>Les colocataires s'engagent à entretenir des relations courtoises et à respecter la tranquillité de chacun. Toute attitude agressive, discriminatoire, ou perturbant la vie du groupe est strictement interdite.</p>
       </div>
     </div>
 
-    <div class="section">
-      <h2 class="section-title">Propreté et entretien</h2>
-      <div class="card">
+    <div class="reglement-section">
+      <h3 class="reglement-title">Propreté et entretien</h3>
+      <div class="reglement-content">
         <ul>
           <li>Les parties communes (cuisine, salon, sanitaires, couloirs, etc.) doivent être maintenues propres en permanence.</li>
           <li>Les ordures ménagères doivent être triées et sorties régulièrement selon le calendrier de la mairie de Redon.</li>
           <li>Les parties privatives (chambres) doivent rester en bon état et propres afin d'éviter toute dégradation.</li>
-          <li class="small">Un défaut d'entretien répété des parties communes pourra être imputé au(x) colocataire(s) désigné(s) et faire l'objet d'une retenue sur le dépôt de garantie en cas de remise en état.</li>
+          <li>Un défaut d'entretien répété des parties communes pourra être imputé au(x) colocataire(s) désigné(s) et faire l'objet d'une retenue sur le dépôt de garantie en cas de remise en état.</li>
         </ul>
       </div>
     </div>
 
-    <div class="section">
-      <h2 class="section-title">Bruit et nuisances</h2>
-      <div class="card">
+    <div class="reglement-section">
+      <h3 class="reglement-title">Bruit et nuisances</h3>
+      <div class="reglement-content">
         <ul>
           <li>Le calme du logement doit être respecté, en particulier entre 22h00 et 8h00.</li>
           <li>Les fêtes ou rassemblements exceptionnels doivent être prévenus à l'avance aux autres colocataires et rester raisonnables.</li>
@@ -711,9 +719,9 @@ function genererHTMLContrat(contrat, proprietaire, bien) {
       </div>
     </div>
 
-    <div class="section">
-      <h2 class="section-title">Cigarettes, drogues et substances</h2>
-      <div class="card">
+    <div class="reglement-section">
+      <h3 class="reglement-title">Cigarettes, drogues et substances</h3>
+      <div class="reglement-content">
         <ul>
           <li>Il est strictement interdit de fumer dans toutes les pièces du logement, y compris les chambres, la cuisine, la salle de bain et les couloirs.</li>
           <li>Le tabac n'est autorisé qu'à l'extérieur du logement, en veillant à ne pas gêner le voisinage.</li>
@@ -722,17 +730,16 @@ function genererHTMLContrat(contrat, proprietaire, bien) {
       </div>
     </div>
 
-    <div class="section">
-      <h2 class="section-title">Animaux</h2>
-      <div class="card">
-        <p>Aucun animal, même temporairement, n'est autorisé dans le logement ni dans ses dépendances (balcon, cave, jardin, etc.).</p>
-        <p style="margin-top: 8px;">Toute dérogation éventuelle devra être validée par écrit par le bailleur et l'ensemble des colocataires.</p>
+    <div class="reglement-section">
+      <h3 class="reglement-title">Animaux</h3>
+      <div class="reglement-content">
+        <p>Aucun animal, même temporairement, n'est autorisé dans le logement ni dans ses dépendances (balcon, cave, jardin, etc.). Toute dérogation éventuelle devra être validée par écrit par le bailleur et l'ensemble des colocataires.</p>
       </div>
     </div>
 
-    <div class="section">
-      <h2 class="section-title">Sécurité et matériel</h2>
-      <div class="card">
+    <div class="reglement-section">
+      <h3 class="reglement-title">Sécurité et matériel</h3>
+      <div class="reglement-content">
         <ul>
           <li>Chaque colocataire doit veiller à fermer portes et fenêtres en quittant le logement.</li>
           <li>Aucun appareil électrique défectueux ne doit être utilisé.</li>
@@ -742,9 +749,9 @@ function genererHTMLContrat(contrat, proprietaire, bien) {
       </div>
     </div>
 
-    <div class="section">
-      <h2 class="section-title">Utilisation des équipements et des parties communes</h2>
-      <div class="card">
+    <div class="reglement-section">
+      <h3 class="reglement-title">Utilisation des équipements et des parties communes</h3>
+      <div class="reglement-content">
         <ul>
           <li>Les équipements (électroménager, mobilier, vaisselle, Wi-Fi, etc.) sont à usage collectif et doivent être utilisés avec soin.</li>
           <li>Aucun meuble ne peut être déplacé des parties communes vers les chambres sans accord collectif.</li>
@@ -753,9 +760,9 @@ function genererHTMLContrat(contrat, proprietaire, bien) {
       </div>
     </div>
 
-    <div class="section">
-      <h2 class="section-title">Visites et hébergements extérieurs</h2>
-      <div class="card">
+    <div class="reglement-section">
+      <h3 class="reglement-title">Visites et hébergements extérieurs</h3>
+      <div class="reglement-content">
         <ul>
           <li>Les colocataires peuvent recevoir des invités dans la limite du raisonnable et sous réserve du respect du calme et de la propreté.</li>
           <li>L'hébergement d'une personne extérieure ne doit pas excéder 3 nuits consécutives par mois, sauf accord de tous les colocataires et du bailleur.</li>
@@ -765,9 +772,9 @@ function genererHTMLContrat(contrat, proprietaire, bien) {
       </div>
     </div>
 
-    <div class="section">
-      <h2 class="section-title">Dégradations et réparations</h2>
-      <div class="card">
+    <div class="reglement-section">
+      <h3 class="reglement-title">Dégradations et réparations</h3>
+      <div class="reglement-content">
         <ul>
           <li>Toute dégradation volontaire ou par négligence engage la responsabilité du colocataire concerné.</li>
           <li>Les réparations locatives sont à la charge des colocataires selon la répartition prévue par la loi.</li>
@@ -776,11 +783,10 @@ function genererHTMLContrat(contrat, proprietaire, bien) {
       </div>
     </div>
 
-    <div class="section">
-      <h2 class="section-title">Respect du bail et du voisinage</h2>
-      <div class="card">
-        <p>Les colocataires s'engagent à respecter les règles du bail de location, du présent règlement, et du règlement de copropriété le cas échéant.</p>
-        <p style="margin-top: 8px;">Le bon voisinage est essentiel : les nuisances sonores, odeurs ou comportements gênants sont à proscrire.</p>
+    <div class="reglement-section">
+      <h3 class="reglement-title">Respect du bail et du voisinage</h3>
+      <div class="reglement-content">
+        <p>Les colocataires s'engagent à respecter les règles du bail de location, du présent règlement, et du règlement de copropriété le cas échéant. Le bon voisinage est essentiel : les nuisances sonores, odeurs ou comportements gênants sont à proscrire.</p>
       </div>
     </div>
 
